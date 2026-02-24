@@ -1,0 +1,300 @@
+import React, { useState, useEffect } from 'react';
+import { storage } from '../utils/storage';
+import { ScheduleEvent, EventCategory, Task } from '../types';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X } from 'lucide-react';
+import TravelExpenseForm from '../components/TravelExpenseForm';
+
+const CalendarPage: React.FC = () => {
+    const [events, setEvents] = useState<ScheduleEvent[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
+    const [editingEventId, setEditingEventId] = useState<string | null>(null);
+    const [editFormData, setEditFormData] = useState<Partial<ScheduleEvent>>({});
+
+    useEffect(() => {
+        setEvents(storage.getEvents());
+        setTasks(storage.getTasks());
+    }, []);
+
+    const saveEvents = (newEvents: ScheduleEvent[]) => {
+        setEvents(newEvents);
+        storage.saveEvents(newEvents);
+    };
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+    const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+    const days = [];
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+    const getDayString = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const handleDeleteEvent = (id: string) => {
+        if (confirm('この予定を削除しますか？')) {
+            saveEvents(events.filter(e => e.id !== id));
+            if (editingEventId === id) setEditingEventId(null);
+        }
+    };
+
+    const handleStartEdit = (event: ScheduleEvent) => {
+        setEditingEventId(event.id);
+        setEditFormData({ ...event });
+    };
+
+    const handleSaveEdit = () => {
+        if (!editFormData.title || !editingEventId) return;
+
+        // Calculate total expense
+        let finalExpense = editFormData.expense;
+        if (finalExpense) {
+            finalExpense.totalAmount = finalExpense.routes.reduce((sum, r) => sum + (r.amount * (r.isRoundTrip ? 2 : 1)), 0);
+        }
+
+        const updatedEvents = events.map(e => e.id === editingEventId ? { ...e, ...editFormData, expense: finalExpense } : e);
+        saveEvents(updatedEvents);
+        setEditingEventId(null);
+    };
+
+    const handleAddEvent = () => {
+        if (!selectedDate) return;
+        const newEvent: ScheduleEvent = {
+            id: Date.now().toString(),
+            title: '新規予定',
+            date: selectedDate,
+            category: 'other',
+            expense: { routes: [], totalAmount: 0 }
+        };
+        saveEvents([...events, newEvent]);
+        handleStartEdit(newEvent);
+    };
+
+    return (
+        <div className="calendar-page">
+            <header className="page-header">
+                <h1>スケジュール管理</h1>
+                <div className="month-nav">
+                    <button className="icon-btn" onClick={prevMonth}><ChevronLeft /></button>
+                    <span className="current-month-label">{year}年 {month + 1}月</span>
+                    <button className="icon-btn" onClick={nextMonth}><ChevronRight /></button>
+                </div>
+            </header>
+
+            <div className="calendar-layout">
+                <div className="calendar-main">
+                    <div className="calendar-grid-container">
+                        <div className="calendar-header">
+                            {['日', '月', '火', '水', '木', '金', '土'].map(d => <div key={d} className="weekday-label">{d}</div>)}
+                        </div>
+                        <div className="calendar-grid">
+                            {days.map((day, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`calendar-day ${day === null ? 'empty' : ''} ${day && getDayString(day) === selectedDate ? 'selected' : ''} ${day && getDayString(day) === new Date().toISOString().split('T')[0] ? 'today' : ''}`}
+                                    onClick={() => day && setSelectedDate(getDayString(day))}
+                                >
+                                    {day && (
+                                        <>
+                                            <span className="day-number">{day}</span>
+                                            <div className="day-events">
+                                                {events.filter(e => e.date === getDayString(day!)).map(e => (
+                                                    <div key={e.id} className={`event-dot ${e.category}`}></div>
+                                                ))}
+                                                {tasks.filter(t => t.dueDate === getDayString(day!) && t.status !== 'completed').map(t => (
+                                                    <div key={t.id} className="task-dot"></div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="calendar-side">
+                    {selectedDate ? (
+                        <div className="detail-panel">
+                            <div className="panel-header">
+                                <h3>{selectedDate} の予定</h3>
+                                <button className="small-primary-btn" onClick={handleAddEvent}><Plus size={16} /> 予定追加</button>
+                            </div>
+
+                            <div className="event-list">
+                                {events.filter(e => e.date === selectedDate).map(event => (
+                                    <div key={event.id} className="event-item-container">
+                                        {editingEventId === event.id ? (
+                                            <div className="event-edit-form">
+                                                <input
+                                                    className="edit-title"
+                                                    value={editFormData.title || ''}
+                                                    onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
+                                                    placeholder="予定タイトル"
+                                                />
+                                                <div className="edit-row">
+                                                    <Clock size={16} />
+                                                    <input type="time" value={editFormData.startTime || ''} onChange={e => setEditFormData({ ...editFormData, startTime: e.target.value })} />
+                                                    <span>〜</span>
+                                                    <input type="time" value={editFormData.endTime || ''} onChange={e => setEditFormData({ ...editFormData, endTime: e.target.value })} />
+                                                </div>
+                                                <div className="edit-row">
+                                                    <MapPin size={16} />
+                                                    <input className="edit-loc" value={editFormData.location || ''} onChange={e => setEditFormData({ ...editFormData, location: e.target.value })} placeholder="場所" />
+                                                </div>
+                                                <select
+                                                    className="edit-cat"
+                                                    value={editFormData.category || 'other'}
+                                                    onChange={e => setEditFormData({ ...editFormData, category: e.target.value as EventCategory })}
+                                                >
+                                                    <option value="meeting">打ち合わせ</option>
+                                                    <option value="negotiation">交渉</option>
+                                                    <option value="business_trip">出張</option>
+                                                    <option value="conference">会議</option>
+                                                    <option value="training">研修</option>
+                                                    <option value="other">その他</option>
+                                                </select>
+
+                                                <TravelExpenseForm
+                                                    routes={editFormData.expense?.routes || []}
+                                                    onChange={routes => setEditFormData({ ...editFormData, expense: { routes, totalAmount: 0 } })}
+                                                />
+
+                                                <div className="edit-actions">
+                                                    <button className="save-btn" onClick={handleSaveEdit}><Save size={16} /> 保存</button>
+                                                    <button className="delete-btn-action" onClick={() => handleDeleteEvent(event.id)}><Trash2 size={16} /> 削除</button>
+                                                    <button className="cancel-btn" onClick={() => setEditingEventId(null)}><X size={16} /> キャンセル</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="event-display-card" onClick={() => handleStartEdit(event)}>
+                                                <div className="ev-header">
+                                                    <span className={`ev-cat-tag ${event.category}`}>{event.category}</span>
+                                                    <span className="ev-time">{event.startTime || ''}</span>
+                                                </div>
+                                                <h4 className="ev-title">{event.title}</h4>
+                                                {event.location && <div className="ev-loc"><MapPin size={12} /> {event.location}</div>}
+                                                {event.expense && event.expense.totalAmount > 0 && (
+                                                    <div className="ev-expense">
+                                                        <Wallet size={12} />
+                                                        <span>旅費: ¥{event.expense.totalAmount.toLocaleString()}</span>
+                                                    </div>
+                                                )}
+                                                <div className="ev-hover-hint">タップで編集</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {tasks.filter(t => t.dueDate === selectedDate).map(task => (
+                                    <div key={task.id} className={`task-display-card ${task.status}`}>
+                                        <div className="ev-header">
+                                            <span className="task-badge">{task.category === 'union_member' ? '🔴 組合員対応' : '🔵 事務タスク'}</span>
+                                            <span className="task-status-tag">{task.status === 'completed' ? '完了' : '期限日'}</span>
+                                        </div>
+                                        <h4 className="ev-title">【タスク】{task.title}</h4>
+                                        <div className="ev-loc">{task.description}</div>
+                                        {task.responseRate !== undefined && (
+                                            <div className="task-rate">回答率: {task.responseRate}%</div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {events.filter(e => e.date === selectedDate).length === 0 && tasks.filter(t => t.dueDate === selectedDate).length === 0 && (
+                                    <div className="empty-state">この日の予定・タスクはありません。</div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="empty-state-panel">日付を選択してください。</div>
+                    )}
+                </div>
+            </div>
+
+            <style>{`
+        .calendar-page { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+        .calendar-layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; }
+        @media (max-width: 1024px) { .calendar-layout { grid-template-columns: 1fr; } }
+
+        .month-nav { display: flex; align-items: center; gap: 1rem; background-color: var(--bg-card); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #334155; width: fit-content; }
+        .current-month-label { font-weight: 700; font-size: 1.1rem; min-width: 120px; text-align: center; }
+
+        .calendar-grid-container { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background-color: #1e293b; border-bottom: 1px solid #334155; }
+        .weekday-label { padding: 0.75rem; text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .calendar-day { height: 100px; padding: 0.5rem; border-right: 1px solid #334155; border-bottom: 1px solid #334155; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; }
+        .calendar-day:nth-child(7n) { border-right: none; }
+        .calendar-day:hover:not(.empty) { background-color: #334155; }
+        .calendar-day.selected { background-color: rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); z-index: 10; }
+        .calendar-day.today { background-color: rgba(59, 130, 246, 0.05); }
+        .calendar-day.today .day-number { color: var(--primary); font-weight: 800; }
+        .calendar-day.empty { cursor: default; }
+        .day-number { font-size: 0.9rem; font-weight: 600; }
+        .day-events { display: flex; flex-wrap: wrap; gap: 4px; }
+        .event-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .event-dot.meeting { background-color: var(--primary); }
+        .event-dot.negotiation { background-color: var(--danger); }
+        .event-dot.business_trip { background-color: var(--warning); }
+        .event-dot.other { background-color: var(--text-muted); }
+        .task-dot { width: 8px; height: 8px; border-radius: 2px; background-color: #10b981; }
+
+        .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; height: fit-content; position: sticky; top: 1.5rem; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .event-list { display: flex; flex-direction: column; gap: 1rem; }
+
+        .event-display-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid #334155; border-radius: 10px; padding: 1rem; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+        .event-display-card:hover { transform: translateY(-2px); border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
+        .ev-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .ev-cat-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 700; border: 1px solid #475569; }
+        .ev-cat-tag.meeting { color: #60a5fa; border-color: #60a5fa; }
+        .ev-cat-tag.negotiation { color: #f87171; border-color: #f87171; }
+        .ev-time { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
+        .ev-title { margin-bottom: 0.5rem; }
+        .ev-loc, .ev-expense { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem; }
+        .ev-expense { color: var(--success); font-weight: 600; }
+        .ev-hover-hint { position: absolute; bottom: 0.5rem; right: 0.5rem; font-size: 0.65rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
+        .event-display-card:hover .ev-hover-hint { opacity: 1; }
+
+        .task-display-card { background-color: rgba(16, 185, 129, 0.05); border: 1px dashed #10b981; border-radius: 10px; padding: 1rem; position: relative; }
+        .task-display-card.completed { opacity: 0.5; filter: grayscale(1); border-style: solid; }
+        .task-badge { font-size: 0.65rem; color: #10b981; font-weight: 700; }
+        .task-status-tag { font-size: 0.65rem; color: var(--text-muted); }
+        .task-rate { font-size: 0.75rem; color: var(--primary); font-weight: 700; margin-top: 0.5rem; }
+
+        .event-edit-form { display: flex; flex-direction: column; gap: 1rem; border: 1px solid var(--primary); border-radius: 10px; padding: 1rem; background-color: #0f172a; }
+        .edit-title { background: none; border: none; border-bottom: 2px solid var(--primary); color: white; font-size: 1.1rem; font-weight: 700; padding: 4px 0; width: 100%; }
+        .edit-row { display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted); font-size: 0.875rem; }
+        .edit-row input { background: none; border: 1px solid #334155; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }
+        .edit-loc { flex: 1; border: none !important; border-bottom: 1px solid #334155 !important; border-radius: 0 !important; }
+        .edit-cat { background-color: #334155; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.875rem; }
+        .edit-actions { display: flex; gap: 1rem; margin-top: 1rem; }
+        .save-btn { flex: 1; background-color: var(--primary); color: white; border: none; padding: 0.6rem; border-radius: 6px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .delete-btn-action { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 0.6rem; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .delete-btn-action:hover { background-color: var(--danger); color: white; }
+        .cancel-btn { background: none; border: 1px solid #334155; color: var(--text-muted); padding: 0.6rem; border-radius: 6px; font-size: 0.8rem; }
+        
+        @media (max-width: 768px) {
+          .calendar-layout { grid-template-columns: 1fr; }
+          .calendar-day { height: 80px; }
+          .current-month-label { font-size: 1rem; min-width: 100px; }
+          .page-header h1 { font-size: 1.5rem; }
+          .detail-panel { padding: 1rem; position: static; }
+        }
+
+        @media (max-width: 480px) {
+          .calendar-day { height: 60px; font-size: 0.75rem; }
+          .weekday-label { padding: 0.5rem; font-size: 0.7rem; }
+          .day-number { font-size: 0.8rem; }
+        }
+      `}</style>
+        </div>
+    );
+};
+
+export default CalendarPage;
