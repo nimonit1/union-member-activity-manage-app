@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { Task, ScheduleEvent } from '../types';
-import { AlertCircle, Calendar, CheckCircle, Clock, TrendingDown, Wallet } from 'lucide-react';
+import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
@@ -345,8 +345,5 @@ const Dashboard: React.FC = () => {
     </div>
   );
 };
-
-// CheckSquare is not imported but used in JSX, fix icons
-import { CheckSquare } from 'lucide-react';
 
 export default Dashboard;

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { TravelRoute, TransportType, ScheduleEvent } from '../types';
-import { Plus, Trash2, Clock, MapPin, Wallet, Copy } from 'lucide-react';
+import { TravelRoute } from '../types';
+import { Plus, Trash2, MapPin, Wallet } from 'lucide-react';
 import { storage } from '../utils/storage';
 
 interface TravelExpenseFormProps {
