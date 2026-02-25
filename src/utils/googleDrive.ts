@@ -86,6 +86,13 @@ export const googleDrive = {
                 headers: { Authorization: `Bearer ${accessToken}` }
             }
         );
+
+        if (!searchResponse.ok) {
+            const errorText = await searchResponse.text();
+            console.error('Search API Error:', errorText);
+            throw new Error(`Search failed: ${searchResponse.status}`);
+        }
+
         const searchData = await searchResponse.json();
 
         if (searchData.files && searchData.files.length > 0) {

@@ -39,8 +39,8 @@ const SyncStatus: React.FC = () => {
             // 今回は簡易的にリロードを促すか、親コンポーネントで管理するのが望ましい。
             // ここでは簡易的に成功メッセージを表示。
         } catch (error) {
-            console.error('Sync failed:', error);
-            alert('同期に失敗しました。');
+            console.error('Detailed Sync Error:', error);
+            alert('同期に失敗しました。F12キーのコンソールで詳細を確認できます。');
         } finally {
             setIsSyncing(false);
         }
