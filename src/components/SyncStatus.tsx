@@ -129,6 +129,14 @@ const SyncStatus: React.FC = () => {
                     border-radius: 8px;
                     margin: 0.5rem 1rem;
                 }
+                .mobile-header .sync-status.authenticated {
+                    margin: 0;
+                    padding: 0;
+                    background: none;
+                }
+                .mobile-header .sync-status {
+                    padding: 0;
+                }
                 .status-info { display: flex; align-items: center; gap: 0.75rem; }
                 .text-content { display: flex; flex-direction: column; }
                 .label { font-size: 0.7rem; font-weight: 700; color: var(--text-main); }
