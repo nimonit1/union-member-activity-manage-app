@@ -151,19 +151,24 @@ export const googleDrive = {
     updateFileContent: async (fileId: string, content: any) => {
         if (!accessToken) throw new Error('Not authenticated');
 
-        const response = await fetch(`https://upload.googleapis.com/drive/v3/files/${fileId}?uploadType=media`, {
-            method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(content),
-        });
+        try {
+            const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(content),
+            });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Update Content API Error:', errorText);
-            throw new Error(`Update failed: ${response.status}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Update Content API Error:', errorText);
+                throw new Error(`Update failed: ${response.status} - ${errorText}`);
+            }
+        } catch (error) {
+            console.error('Network error during updateFileContent:', error);
+            throw error;
         }
     }
 };
