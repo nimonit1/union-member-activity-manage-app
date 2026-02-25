@@ -1,14 +1,21 @@
+import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import TaskList from './pages/TaskList'
 import Calendar from './pages/Calendar'
+import { googleDrive } from './utils/googleDrive'
 
 /**
  * 労働組合 役員活動管理アプリ
  * メインコンポーネント
  */
 function App() {
+    useEffect(() => {
+        // Google Drive API の初期化
+        googleDrive.init();
+    }, []);
+
     return (
         <Router>
             <Layout>

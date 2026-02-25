@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, User } from 'lucide-react';
+import SyncStatus from './SyncStatus';
 
 const Sidebar: React.FC = () => {
   const menuItems = [
@@ -30,6 +31,8 @@ const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </nav>
+
+      <SyncStatus />
 
       <div className="sidebar-footer">
         <div className="user-info">

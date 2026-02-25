@@ -1,13 +1,16 @@
-import { Task, ScheduleEvent } from '../types';
+import { Task, ScheduleEvent, AppState } from '../types';
+import { googleDrive } from './googleDrive';
 
 /**
- * localStorage を使用した簡易的なデータ永続化
+ * localStorage を使用した簡易的なデータ永続化とクラウド同期
  */
 
 const KEYS = {
     TASKS: 'union_app_tasks',
     EVENTS: 'union_app_events',
 };
+
+const SYNC_FILE_NAME = 'union_app_data.json';
 
 export const storage = {
     getTasks: (): Task[] => {
@@ -17,6 +20,7 @@ export const storage = {
 
     saveTasks: (tasks: Task[]): void => {
         localStorage.setItem(KEYS.TASKS, JSON.stringify(tasks));
+        storage.uploadToCloud(); // バックグラウンドでアップロードを試行
     },
 
     getEvents: (): ScheduleEvent[] => {
@@ -26,5 +30,41 @@ export const storage = {
 
     saveEvents: (events: ScheduleEvent[]): void => {
         localStorage.setItem(KEYS.EVENTS, JSON.stringify(events));
+        storage.uploadToCloud(); // バックグラウンドでアップロードを試行
     },
+
+    /**
+     * クラウドストレージ上の最新データで同期
+     */
+    syncWithCloud: async (): Promise<void> => {
+        if (!googleDrive.isAuthenticated()) return;
+
+        const fileId = await googleDrive.getOrCreateFile(SYNC_FILE_NAME);
+        const cloudData = await googleDrive.getFileContent(fileId) as AppState | null;
+
+        if (cloudData) {
+            // クラウドにデータがある場合、ローカルを更新
+            storage.saveTasks(cloudData.tasks);
+            storage.saveEvents(cloudData.events);
+        } else {
+            // クラウドにデータがない場合（初回）、現在のローカルデータをアップロード
+            await storage.uploadToCloud();
+        }
+    },
+
+    /**
+     * 現在のローカルデータをクラウドへアップロード
+     */
+    uploadToCloud: async (): Promise<void> => {
+        if (!googleDrive.isAuthenticated()) return;
+
+        const fileId = await googleDrive.getOrCreateFile(SYNC_FILE_NAME);
+        const appState: AppState = {
+            tasks: storage.getTasks(),
+            events: storage.getEvents(),
+            lastSyncedAt: new Date().toISOString()
+        };
+
+        await googleDrive.updateFileContent(fileId, appState);
+    }
 };
