@@ -127,10 +127,22 @@ export const googleDrive = {
 
         if (!response.ok) {
             if (response.status === 404) return null;
-            throw new Error('Failed to fetch file content');
+            const errorText = await response.text();
+            console.error('Get Content API Error:', errorText);
+            throw new Error(`Failed to fetch file content: ${response.status}`);
         }
 
-        return await response.json();
+        const text = await response.text();
+        if (!text || text.trim() === '') {
+            return null; // 空のファイルの場合は null を返す
+        }
+
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('Failed to parse JSON content:', e, 'Content:', text);
+            return null;
+        }
     },
 
     /**
@@ -139,7 +151,7 @@ export const googleDrive = {
     updateFileContent: async (fileId: string, content: any) => {
         if (!accessToken) throw new Error('Not authenticated');
 
-        await fetch(`https://upload.googleapis.com/drive/v3/files/${fileId}?uploadType=media`, {
+        const response = await fetch(`https://upload.googleapis.com/drive/v3/files/${fileId}?uploadType=media`, {
             method: 'PATCH',
             headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -147,6 +159,12 @@ export const googleDrive = {
             },
             body: JSON.stringify(content),
         });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Update Content API Error:', errorText);
+            throw new Error(`Update failed: ${response.status}`);
+        }
     }
 };
 
