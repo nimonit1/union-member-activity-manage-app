@@ -13,6 +13,7 @@ export const googleDrive = {
      * Google Identity Services の初期化
      */
     init: () => {
+        console.log('Google Drive Sync: Initializing version 1.0.4...');
         return new Promise<void>((resolve) => {
             const checkGsi = setInterval(() => {
                 if (window.google) {
@@ -74,6 +75,20 @@ export const googleDrive = {
     },
 
     /**
+     * JSONレスポンスの安全なパース
+     */
+    safeParseJson: async (response: Response) => {
+        const text = await response.text();
+        if (!text || text.trim() === '') return { files: [] }; // 検索等のため空配列を返す
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('JSON parse error:', e, 'Content:', text);
+            return null;
+        }
+    },
+
+    /**
      * AppDataFolder 内のファイルを検索、なければ作成
      */
     getOrCreateFile: async (fileName: string) => {
@@ -93,9 +108,9 @@ export const googleDrive = {
             throw new Error(`Search failed: ${searchResponse.status}`);
         }
 
-        const searchData = await searchResponse.json();
+        const searchData = await googleDrive.safeParseJson(searchResponse);
 
-        if (searchData.files && searchData.files.length > 0) {
+        if (searchData && searchData.files && searchData.files.length > 0) {
             return searchData.files[0].id;
         }
 
@@ -111,8 +126,15 @@ export const googleDrive = {
                 parents: ['appDataFolder'],
             }),
         });
-        const createData = await createResponse.json();
-        return createData.id;
+
+        if (!createResponse.ok) {
+            const errorText = await createResponse.text();
+            console.error('Create File API Error:', errorText);
+            throw new Error(`Create failed: ${createResponse.status}`);
+        }
+
+        const createData = await googleDrive.safeParseJson(createResponse);
+        return createData?.id;
     },
 
     /**
@@ -132,17 +154,7 @@ export const googleDrive = {
             throw new Error(`Failed to fetch file content: ${response.status}`);
         }
 
-        const text = await response.text();
-        if (!text || text.trim() === '') {
-            return null; // 空のファイルの場合は null を返す
-        }
-
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            console.error('Failed to parse JSON content:', e, 'Content:', text);
-            return null;
-        }
+        return await googleDrive.safeParseJson(response);
     },
 
     /**
