@@ -13,7 +13,7 @@ export const googleDrive = {
      * Google Identity Services の初期化
      */
     init: () => {
-        console.log('Google Drive Sync: Initializing version 1.0.4...');
+        console.log('Google Drive Sync: Initializing version 1.0.5...');
         return new Promise<void>((resolve) => {
             const checkGsi = setInterval(() => {
                 if (window.google) {
@@ -37,8 +37,9 @@ export const googleDrive = {
 
     /**
      * ログイン（アクセストークンの取得）
+     * @param silent サイレントモード（プロンプトを出さない）
      */
-    signIn: () => {
+    signIn: (silent = false) => {
         return new Promise<void>((resolve, reject) => {
             if (!tokenClient) {
                 reject(new Error('Google Drive API not initialized'));
@@ -52,7 +53,7 @@ export const googleDrive = {
                     resolve();
                 }
             };
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            tokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
         });
     },
 

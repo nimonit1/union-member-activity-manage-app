@@ -9,13 +9,35 @@ const SyncStatus: React.FC = () => {
     const [lastSynced, setLastSynced] = useState<string | null>(null);
 
     useEffect(() => {
-        // 初期状態の確認
-        setIsAuthenticated(googleDrive.isAuthenticated());
+        const checkAuth = async () => {
+            // 初期状態の確認
+            const authenticated = googleDrive.isAuthenticated();
+            setIsAuthenticated(authenticated);
+
+            // すでにログインの意志がある（localStorageにフラグがある）場合は自動再接続を試行
+            const shouldSync = localStorage.getItem('union_app_sync_enabled') === 'true';
+            if (!authenticated && shouldSync) {
+                try {
+                    // APIの初期化を待つ（App.tsxでinitされているはずだが念のため）
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await googleDrive.signIn(true); // サイレントサインイン
+                    setIsAuthenticated(true);
+                    handleSync();
+                } catch (e) {
+                    console.log('Auto-reconnect failed (expired or revoked):', e);
+                    localStorage.removeItem('union_app_sync_enabled');
+                    setIsAuthenticated(false);
+                }
+            }
+        };
+
+        checkAuth();
     }, []);
 
     const handleSignIn = async () => {
         try {
             await googleDrive.signIn();
+            localStorage.setItem('union_app_sync_enabled', 'true');
             setIsAuthenticated(true);
             handleSync();
         } catch (error) {
@@ -26,6 +48,7 @@ const SyncStatus: React.FC = () => {
 
     const handleSignOut = () => {
         googleDrive.signOut();
+        localStorage.removeItem('union_app_sync_enabled');
         setIsAuthenticated(false);
     };
 
