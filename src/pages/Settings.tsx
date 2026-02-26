@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { Role, TaskDefinition, MeetingDefinition } from '../types';
-import { Plus, Trash2, Edit2, Shield, BookOpen, Users, Settings as SettingsIcon } from 'lucide-react';
+import { Role, TaskDefinition, MeetingDefinition, AppState } from '../types';
+import { Plus, Trash2, Edit2, Shield, BookOpen, Users, Settings as SettingsIcon, ChevronDown, ChevronRight, Download } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
@@ -10,7 +10,20 @@ const SettingsPage: React.FC = () => {
     const [currentRoleId, setCurrentRoleId] = useState('');
     const [showAllItems, setShowAllItems] = useState(false);
 
-    // Editing states
+    // Accordion state
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+        prefs: true,
+        roles: false,
+        tasks: false,
+        meetings: false
+    });
+
+    // Inline adding states
+    const [newRoleName, setNewRoleName] = useState('');
+    const [newTaskDef, setNewTaskDef] = useState<Partial<TaskDefinition>>({ title: '', category: 'union_member', priority: 'medium', roleIds: [] });
+    const [newMtgDef, setNewMtgDef] = useState<Partial<MeetingDefinition>>({ name: '', content: '', timing: '', roleIds: [] });
+
+    // Editing states (keeping modals for complex edits, but using table for list)
     const [editingRole, setEditingRole] = useState<Partial<Role> | null>(null);
     const [editingTaskDef, setEditingTaskDef] = useState<Partial<TaskDefinition> | null>(null);
     const [editingMtgDef, setEditingMtgDef] = useState<Partial<MeetingDefinition> | null>(null);
@@ -33,17 +46,56 @@ const SettingsPage: React.FC = () => {
         });
     };
 
+    const toggleSection = (section: string) => {
+        setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+    };
+
+    const handleExport = (type: 'settings' | 'all') => {
+        let dataToExport: Partial<AppState> = {};
+        const fullState = {
+            version: 2,
+            tasks: storage.getTasks(),
+            events: storage.getEvents(),
+            roles: storage.getRoles(),
+            taskDefinitions: storage.getTaskDefinitions(),
+            meetingDefinitions: storage.getMeetingDefinitions(),
+            currentRoleId: storage.getCurrentRoleId(),
+            showAllItems: storage.getShowAllItems(),
+            lastSyncedAt: localStorage.getItem('union_app_last_sync') || undefined
+        };
+
+        if (type === 'settings') {
+            const { tasks, events, ...settings } = fullState;
+            dataToExport = settings;
+        } else {
+            dataToExport = fullState;
+        }
+
+        const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `union_app_${type}_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     // Role Handlers
+    const handleAddRole = () => {
+        if (!newRoleName) return;
+        const newRole = { id: `role-${Date.now()}`, name: newRoleName };
+        const newRoles = [...roles, newRole];
+        setRoles(newRoles);
+        saveAll(newRoles);
+        setNewRoleName('');
+    };
+
     const handleSaveRole = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingRole?.name) return;
-        let newRoles;
-        if (editingRole.id) {
-            newRoles = roles.map(r => r.id === editingRole.id ? editingRole as Role : r);
-        } else {
-            const newRole = { id: `role-${Date.now()}`, name: editingRole.name };
-            newRoles = [...roles, newRole];
-        }
+        const newRoles = roles.map(r => r.id === editingRole.id ? editingRole as Role : r);
         setRoles(newRoles);
         saveAll(newRoles);
         setEditingRole(null);
@@ -53,7 +105,6 @@ const SettingsPage: React.FC = () => {
         if (confirm('この役職を削除しますか？紐付いているタスク・会議体からも解除されます。')) {
             const newRoles = roles.filter(r => r.id !== id);
             setRoles(newRoles);
-            // Cleanup references
             const newTaskDefs = taskDefs.map(t => ({ ...t, roleIds: t.roleIds.filter(rid => rid !== id) }));
             const newMtgDefs = mtgDefs.map(m => ({ ...m, roleIds: m.roleIds.filter(rid => rid !== id) }));
             setTaskDefs(newTaskDefs);
@@ -63,65 +114,69 @@ const SettingsPage: React.FC = () => {
     };
 
     // TaskDef Handlers
+    const handleAddTaskDef = () => {
+        if (!newTaskDef.title) return;
+        const def: TaskDefinition = {
+            id: `def-${Date.now()}`,
+            title: newTaskDef.title || '',
+            description: newTaskDef.description || '',
+            category: newTaskDef.category as any || 'union_member',
+            priority: newTaskDef.priority as any || 'medium',
+            roleIds: newTaskDef.roleIds || []
+        };
+        const newList = [...taskDefs, def];
+        setTaskDefs(newList);
+        saveAll(roles, newList);
+        setNewTaskDef({ title: '', category: 'union_member', priority: 'medium', roleIds: [] });
+    };
+
     const handleSaveTaskDef = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingTaskDef?.title) return;
-        let newTaskDefs;
-        const completeTaskDef = {
-            category: 'union_member',
-            priority: 'medium',
-            description: '',
-            roleIds: [],
-            ...editingTaskDef
-        } as TaskDefinition;
-
-        if (completeTaskDef.id) {
-            newTaskDefs = taskDefs.map(t => t.id === completeTaskDef.id ? completeTaskDef : t);
-        } else {
-            completeTaskDef.id = `def-${Date.now()}`;
-            newTaskDefs = [...taskDefs, completeTaskDef];
-        }
-        setTaskDefs(newTaskDefs);
-        saveAll(roles, newTaskDefs);
+        const newList = taskDefs.map(t => t.id === editingTaskDef.id ? editingTaskDef as TaskDefinition : t);
+        setTaskDefs(newList);
+        saveAll(roles, newList);
         setEditingTaskDef(null);
     };
 
     const handleDeleteTaskDef = (id: string) => {
-        if (confirm('この定型タスク定義を削除しますか？')) {
-            const newTaskDefs = taskDefs.filter(t => t.id !== id);
-            setTaskDefs(newTaskDefs);
-            saveAll(roles, newTaskDefs);
+        if (confirm('この定義を削除しますか？')) {
+            const newList = taskDefs.filter(t => t.id !== id);
+            setTaskDefs(newList);
+            saveAll(roles, newList);
         }
     };
 
     // MeetingDef Handlers
+    const handleAddMtgDef = () => {
+        if (!newMtgDef.name) return;
+        const def: MeetingDefinition = {
+            id: `mtg-${Date.now()}`,
+            name: newMtgDef.name || '',
+            content: newMtgDef.content || '',
+            timing: newMtgDef.timing || '',
+            roleIds: newMtgDef.roleIds || []
+        };
+        const newList = [...mtgDefs, def];
+        setMtgDefs(newList);
+        saveAll(roles, taskDefs, newList);
+        setNewMtgDef({ name: '', content: '', timing: '', roleIds: [] });
+    };
+
     const handleSaveMtgDef = (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingMtgDef?.name) return;
-        let newMtgDefs;
-        const completeMtgDef = {
-            content: '',
-            timing: '',
-            roleIds: [],
-            ...editingMtgDef
-        } as MeetingDefinition;
-
-        if (completeMtgDef.id) {
-            newMtgDefs = mtgDefs.map(m => m.id === completeMtgDef.id ? completeMtgDef : m);
-        } else {
-            completeMtgDef.id = `mtg-${Date.now()}`;
-            newMtgDefs = [...mtgDefs, completeMtgDef];
-        }
-        setMtgDefs(newMtgDefs);
-        saveAll(roles, taskDefs, newMtgDefs);
+        const newList = mtgDefs.map(m => m.id === editingMtgDef.id ? editingMtgDef as MeetingDefinition : m);
+        setMtgDefs(newList);
+        saveAll(roles, taskDefs, newList);
         setEditingMtgDef(null);
     };
 
     const handleDeleteMtgDef = (id: string) => {
-        if (confirm('この会議体定義を削除しますか？')) {
-            const newMtgDefs = mtgDefs.filter(m => m.id !== id);
-            setMtgDefs(newMtgDefs);
-            saveAll(roles, taskDefs, newMtgDefs);
+        if (confirm('この定義を削除しますか？')) {
+            const newList = mtgDefs.filter(m => m.id !== id);
+            setMtgDefs(newList);
+            saveAll(roles, taskDefs, newList);
         }
     };
 
@@ -137,133 +192,251 @@ const SettingsPage: React.FC = () => {
                 <h1>設定</h1>
             </header>
 
-            <div className="settings-grid">
-                {/* 1. ユーザー設定 */}
-                <section className="settings-card user-prefs">
-                    <div className="card-header">
+            <div className="settings-accordion">
+                {/* 1. 個人設定 */}
+                <div className={`accordion-section ${openSections.prefs ? 'open' : ''}`}>
+                    <div className="section-header" onClick={() => toggleSection('prefs')}>
                         <SettingsIcon size={20} />
-                        <h2>個人設定</h2>
+                        <h2>個人設定・データ管理</h2>
+                        {openSections.prefs ? <ChevronDown /> : <ChevronRight />}
                     </div>
-                    <div className="card-body">
-                        <div className="setting-item">
-                            <label>現在の役職</label>
-                            <select
-                                value={currentRoleId}
-                                onChange={(e) => {
-                                    setCurrentRoleId(e.target.value);
-                                    saveAll(roles, taskDefs, mtgDefs, e.target.value);
-                                }}
-                            >
-                                <option value="">役職なし / 未設定</option>
-                                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                            </select>
-                            <p className="hint">選択した役職に応じてタスクや会議体がフィルタリングされます。</p>
-                        </div>
-                        <div className="setting-item checkbox">
-                            <label className="toggle-label">
-                                <input
-                                    type="checkbox"
-                                    checked={showAllItems}
+                    {openSections.prefs && (
+                        <div className="section-content">
+                            <div className="setting-item">
+                                <label>現在の役職</label>
+                                <select
+                                    value={currentRoleId}
                                     onChange={(e) => {
-                                        setShowAllItems(e.target.checked);
-                                        saveAll(roles, taskDefs, mtgDefs, currentRoleId, e.target.checked);
+                                        setCurrentRoleId(e.target.value);
+                                        saveAll(roles, taskDefs, mtgDefs, e.target.value);
                                     }}
-                                />
-                                全表示モード（他役職のタスク等もすべて表示）
-                            </label>
+                                >
+                                    <option value="">役職なし / 未設定</option>
+                                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                </select>
+                                <p className="hint">選択した役職に応じてフィルタリングされます。</p>
+                            </div>
+                            <div className="setting-item checkbox">
+                                <label className="toggle-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={showAllItems}
+                                        onChange={(e) => {
+                                            setShowAllItems(e.target.checked);
+                                            saveAll(roles, taskDefs, mtgDefs, currentRoleId, e.target.checked);
+                                        }}
+                                    />
+                                    全表示モード（他役職の項目もすべて表示）
+                                </label>
+                            </div>
+                            <div className="export-area">
+                                <h3>データのエクスポート</h3>
+                                <div className="export-actions">
+                                    <button className="export-btn" onClick={() => handleExport('settings')}>
+                                        <Download size={16} /> 設定のみを保存 (JSON)
+                                    </button>
+                                    <button className="export-btn all" onClick={() => handleExport('all')}>
+                                        <Download size={16} /> 全データを保存 (JSON)
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    )}
+                </div>
 
-                {/* 2. 役職定義管理 */}
-                <section className="settings-card">
-                    <div className="card-header">
+                {/* 2. 役職定義 */}
+                <div className={`accordion-section ${openSections.roles ? 'open' : ''}`}>
+                    <div className="section-header" onClick={() => toggleSection('roles')}>
                         <Users size={20} />
                         <h2>役職の定義</h2>
-                        <button className="add-btn-small" onClick={() => setEditingRole({ name: '' })}><Plus size={16} /></button>
+                        {openSections.roles ? <ChevronDown /> : <ChevronRight />}
                     </div>
-                    <div className="card-body">
-                        <div className="role-list">
-                            {roles.map(role => (
-                                <div key={role.id} className="role-item">
-                                    <span>{role.name}</span>
-                                    <div className="actions">
-                                        <button className="icon-btn" onClick={() => setEditingRole(role)}><Edit2 size={14} /></button>
-                                        <button className="icon-btn delete" onClick={() => handleDeleteRole(role.id)}><Trash2 size={14} /></button>
-                                    </div>
-                                </div>
-                            ))}
+                    {openSections.roles && (
+                        <div className="section-content">
+                            <table className="settings-table">
+                                <thead>
+                                    <tr>
+                                        <th>役職名</th>
+                                        <th style={{ width: '100px' }}>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {roles.map(role => (
+                                        <tr key={role.id}>
+                                            <td>{role.name}</td>
+                                            <td>
+                                                <div className="actions">
+                                                    <button className="icon-btn" onClick={() => setEditingRole(role)}><Edit2 size={14} /></button>
+                                                    <button className="icon-btn delete" onClick={() => handleDeleteRole(role.id)}><Trash2 size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr className="adding-row">
+                                        <td>
+                                            <input
+                                                value={newRoleName}
+                                                onChange={e => setNewRoleName(e.target.value)}
+                                                placeholder="新しい役職名を入力..."
+                                            />
+                                        </td>
+                                        <td>
+                                            <button className="add-inline-btn" onClick={handleAddRole} disabled={!newRoleName}>
+                                                <Plus size={16} /> 追加
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </section>
+                    )}
+                </div>
 
-                {/* 3. 定型タスク定義 */}
-                <section className="settings-card task-definitions">
-                    <div className="card-header">
+                {/* 3. 定型タスク */}
+                <div className={`accordion-section ${openSections.tasks ? 'open' : ''}`}>
+                    <div className="section-header" onClick={() => toggleSection('tasks')}>
                         <BookOpen size={20} />
                         <h2>定型タスクの定義</h2>
-                        <button className="add-btn-small" onClick={() => setEditingTaskDef({ title: '', category: 'union_member', priority: 'medium', roleIds: [] })}>
-                            <Plus size={16} />
-                        </button>
+                        {openSections.tasks ? <ChevronDown /> : <ChevronRight />}
                     </div>
-                    <div className="card-body">
-                        {taskDefs.map(def => (
-                            <div key={def.id} className="def-item">
-                                <div className="def-info">
-                                    <strong>{def.title}</strong>
-                                    <p>{def.description}</p>
-                                    <div className="role-badges">
-                                        {def.roleIds.map(rid => (
-                                            <span key={rid} className="role-badge">
-                                                {roles.find(r => r.id === rid)?.name || rid}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="actions">
-                                    <button className="icon-btn" onClick={() => setEditingTaskDef(def)}><Edit2 size={14} /></button>
-                                    <button className="icon-btn delete" onClick={() => handleDeleteTaskDef(def.id)}><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                    {openSections.tasks && (
+                        <div className="section-content overflow-x">
+                            <table className="settings-table">
+                                <thead>
+                                    <tr>
+                                        <th>タスク名</th>
+                                        <th>カテゴリ</th>
+                                        <th>優先度</th>
+                                        <th>対象役職</th>
+                                        <th style={{ width: '100px' }}>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {taskDefs.map(def => (
+                                        <tr key={def.id}>
+                                            <td>
+                                                <strong>{def.title}</strong>
+                                                <div className="sub-text">{def.description}</div>
+                                            </td>
+                                            <td>{def.category === 'union_member' ? '🔴 組合員' : '🔵 事務'}</td>
+                                            <td><span className={`prio-tag ${def.priority}`}>{def.priority}</span></td>
+                                            <td>
+                                                <div className="role-mini-badges">
+                                                    {def.roleIds.length > 0 ? def.roleIds.map(rid => (
+                                                        <span key={rid} className="mini-badge">
+                                                            {roles.find(r => r.id === rid)?.name || rid}
+                                                        </span>
+                                                    )) : <span className="empty-hint">全員</span>}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="actions">
+                                                    <button className="icon-btn" onClick={() => setEditingTaskDef(def)}><Edit2 size={14} /></button>
+                                                    <button className="icon-btn delete" onClick={() => handleDeleteTaskDef(def.id)}><Trash2 size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr className="adding-row complex">
+                                        <td colSpan={5}>
+                                            <div className="inline-form">
+                                                <input
+                                                    value={newTaskDef.title}
+                                                    onChange={e => setNewTaskDef({ ...newTaskDef, title: e.target.value })}
+                                                    placeholder="新しい定型タスク名..."
+                                                />
+                                                <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any })}>
+                                                    <option value="union_member">🔴 組合員</option>
+                                                    <option value="administrative">🔵 事務</option>
+                                                </select>
+                                                <select value={newTaskDef.priority} onChange={e => setNewTaskDef({ ...newTaskDef, priority: e.target.value as any })}>
+                                                    <option value="high">高</option>
+                                                    <option value="medium">中</option>
+                                                    <option value="low">低</option>
+                                                </select>
+                                                <button className="add-inline-btn" onClick={handleAddTaskDef} disabled={!newTaskDef.title}>
+                                                    <Plus size={16} /> タスク定義を追加
+                                                </button>
+                                            </div>
+                                            <p className="hint">※詳細な説明や担当役職の設定は、追加後に「編集」から行ってください。</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
 
-                {/* 4. 会議体定義 */}
-                <section className="settings-card meeting-definitions">
-                    <div className="card-header">
+                {/* 4. 会議体 */}
+                <div className={`accordion-section ${openSections.meetings ? 'open' : ''}`}>
+                    <div className="section-header" onClick={() => toggleSection('meetings')}>
                         <Shield size={20} />
                         <h2>会議体の定義</h2>
-                        <button className="add-btn-small" onClick={() => setEditingMtgDef({ name: '', content: '', timing: '', roleIds: [] })}>
-                            <Plus size={16} />
-                        </button>
+                        {openSections.meetings ? <ChevronDown /> : <ChevronRight />}
                     </div>
-                    <div className="card-body">
-                        {mtgDefs.map(def => (
-                            <div key={def.id} className="def-item">
-                                <div className="def-info">
-                                    <strong>{def.name}</strong>
-                                    <p className="timing">頻度: {def.timing}</p>
-                                    <p>{def.content}</p>
-                                    <div className="role-badges">
-                                        {def.roleIds.map(rid => (
-                                            <span key={rid} className="role-badge">
-                                                {roles.find(r => r.id === rid)?.name || rid}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="actions">
-                                    <button className="icon-btn" onClick={() => setEditingMtgDef(def)}><Edit2 size={14} /></button>
-                                    <button className="icon-btn delete" onClick={() => handleDeleteMtgDef(def.id)}><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                    {openSections.meetings && (
+                        <div className="section-content overflow-x">
+                            <table className="settings-table">
+                                <thead>
+                                    <tr>
+                                        <th>会議体名</th>
+                                        <th>時期・頻度</th>
+                                        <th>参加役職</th>
+                                        <th style={{ width: '100px' }}>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {mtgDefs.map(def => (
+                                        <tr key={def.id}>
+                                            <td>
+                                                <strong>{def.name}</strong>
+                                                <div className="sub-text">{def.content}</div>
+                                            </td>
+                                            <td><span className="timing-text">{def.timing}</span></td>
+                                            <td>
+                                                <div className="role-mini-badges">
+                                                    {def.roleIds.length > 0 ? def.roleIds.map(rid => (
+                                                        <span key={rid} className="mini-badge">
+                                                            {roles.find(r => r.id === rid)?.name || rid}
+                                                        </span>
+                                                    )) : <span className="empty-hint">全員</span>}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="actions">
+                                                    <button className="icon-btn" onClick={() => setEditingMtgDef(def)}><Edit2 size={14} /></button>
+                                                    <button className="icon-btn delete" onClick={() => handleDeleteMtgDef(def.id)}><Trash2 size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr className="adding-row complex">
+                                        <td colSpan={4}>
+                                            <div className="inline-form">
+                                                <input
+                                                    value={newMtgDef.name}
+                                                    onChange={e => setNewMtgDef({ ...newMtgDef, name: e.target.value })}
+                                                    placeholder="会議体名..."
+                                                />
+                                                <input
+                                                    value={newMtgDef.timing}
+                                                    onChange={e => setNewMtgDef({ ...newMtgDef, timing: e.target.value })}
+                                                    placeholder="頻度（例：毎月第1月曜）"
+                                                />
+                                                <button className="add-inline-btn" onClick={handleAddMtgDef} disabled={!newMtgDef.name}>
+                                                    <Plus size={16} /> 会議体定義を追加
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Editing Modals */}
+            {/* Modals for Complex Edits */}
             {editingRole && (
                 <div className="modal-overlay">
                     <div className="modal-content mini">
@@ -273,7 +446,7 @@ const SettingsPage: React.FC = () => {
                                 autoFocus
                                 value={editingRole.name}
                                 onChange={e => setEditingRole({ ...editingRole, name: e.target.value })}
-                                placeholder="役職名（例：副委員長）"
+                                placeholder="役職名"
                                 required
                             />
                             <div className="modal-footer">
@@ -288,7 +461,7 @@ const SettingsPage: React.FC = () => {
             {editingTaskDef && (
                 <div className="modal-overlay">
                     <div className="modal-content">
-                        <h3>タスク定義</h3>
+                        <h3>タスク定義の編集</h3>
                         <form onSubmit={handleSaveTaskDef}>
                             <div className="form-group">
                                 <label>タイトル</label>
@@ -345,7 +518,7 @@ const SettingsPage: React.FC = () => {
             {editingMtgDef && (
                 <div className="modal-overlay">
                     <div className="modal-content">
-                        <h3>会議体定義</h3>
+                        <h3>会議体定義の編集</h3>
                         <form onSubmit={handleSaveMtgDef}>
                             <div className="form-group">
                                 <label>会議体名</label>
@@ -353,7 +526,7 @@ const SettingsPage: React.FC = () => {
                             </div>
                             <div className="form-group">
                                 <label>開催時期・頻度</label>
-                                <input value={editingMtgDef.timing} onChange={e => setEditingMtgDef({ ...editingMtgDef, timing: e.target.value })} placeholder="例：毎月第1月曜日" required />
+                                <input value={editingMtgDef.timing} onChange={e => setEditingMtgDef({ ...editingMtgDef, timing: e.target.value })} required />
                             </div>
                             <div className="form-group">
                                 <label>内容</label>
@@ -388,40 +561,70 @@ const SettingsPage: React.FC = () => {
 
             <style>{`
                 .settings-page { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
-                .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-                .settings-card { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-                .card-header { display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid #334155; padding-bottom: 0.75rem; margin-bottom: 0.5rem; }
-                .card-header h2 { font-size: 1.1rem; margin: 0; flex: 1; }
-                .card-body { display: flex; flex-direction: column; gap: 1rem; }
-
-                .setting-item { display: flex; flex-direction: column; gap: 0.5rem; }
-                .setting-item label { font-size: 0.875rem; color: var(--text-muted); font-weight: 600; }
-                .setting-item.checkbox { flex-direction: row; align-items: center; }
-                .toggle-label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.9rem; }
-                .hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
-
-                .role-list { display: flex; flex-direction: column; gap: 0.5rem; }
-                .role-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background-color: rgba(255, 255, 255, 0.03); border-radius: 6px; }
-                .actions { display: flex; gap: 0.5rem; }
-                .add-btn-small { background-color: var(--primary); color: white; border: none; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-
-                .def-item { border: 1px solid #334155; border-radius: 8px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; background-color: rgba(255, 255, 255, 0.02); }
-                .def-info { flex: 1; }
-                .def-info strong { display: block; margin-bottom: 0.25rem; font-size: 0.95rem; }
-                .def-info p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
-                .def-info .timing { color: var(--warning); font-weight: 600; margin-bottom: 0.25rem; }
                 
-                .role-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 0.5rem; }
-                .role-badge { font-size: 0.65rem; background-color: #1e293b; border: 1px solid var(--primary); color: var(--primary); padding: 1px 5px; border-radius: 4px; }
+                .settings-accordion { display: flex; flex-direction: column; gap: 0.75rem; }
+                .accordion-section { border: 1px solid #334155; border-radius: 12px; background-color: var(--bg-card); overflow: hidden; }
+                .section-header { 
+                    padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; 
+                    transition: background 0.2s; background-color: rgba(255, 255, 255, 0.02);
+                }
+                .section-header:hover { background-color: rgba(255, 255, 255, 0.05); }
+                .section-header h2 { font-size: 1.1rem; flex: 1; margin: 0; }
+                .section-content { padding: 1.5rem; border-top: 1px solid #334155; background-color: var(--bg-dark); }
+                .overflow-x { overflow-x: auto; }
 
-                .role-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.5rem; background-color: #0f172a; border-radius: 8px; }
-                .role-cb-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; padding: 4px; transition: background 0.2s; }
-                .role-cb-label:hover { background-color: #1e293b; }
+                /* Settings Table */
+                .settings-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+                .settings-table th, .settings-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; text-align: left; }
+                .settings-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; background-color: rgba(255,255,255,0.02); }
+                .sub-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+                .adding-row { background-color: rgba(59, 130, 246, 0.05); }
+                .adding-row td { border-bottom: none; padding-top: 1rem; }
+                
+                .inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+                .inline-form input, .inline-form select { 
+                    background-color: #0f172a; border: 1px solid #334155; color: white; 
+                    padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; flex: 1; min-width: 120px;
+                }
+                .add-inline-btn { 
+                    background-color: var(--primary); color: white; border: none; padding: 0.5rem 1rem; 
+                    border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;
+                }
+                .add-inline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-                /* Modal Adjustments */
-                .modal-content.mini { max-width: 400px; }
-                .modal-content h3 { margin-top: 0; margin-bottom: 1.5rem; }
-                .modal-content input { width: 100%; box-sizing: border-box; }
+                /* Tags & Badges */
+                .prio-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+                .prio-tag.high { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); }
+                .prio-tag.medium { background-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
+                .prio-tag.low { background-color: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+                
+                .role-mini-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+                .mini-badge { font-size: 0.65rem; background-color: #1e293b; border: 1px solid var(--primary); color: var(--primary); padding: 1px 4px; border-radius: 3px; }
+                .timing-text { font-size: 0.85rem; color: var(--warning); font-weight: 600; }
+
+                /* Personal Prefs Area */
+                .setting-item { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+                .setting-item label { font-size: 0.875rem; color: var(--text-muted); font-weight: 600; }
+                .setting-item.checkbox { flex-direction: row; align-items: center; margin-top: 1rem; }
+                .toggle-label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.9rem; }
+                .hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.5rem; }
+
+                /* Export Area */
+                .export-area { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed #334155; }
+                .export-area h3 { font-size: 0.95rem; margin-bottom: 1rem; color: var(--text-main); }
+                .export-actions { display: flex; gap: 1rem; }
+                .export-btn { 
+                    background: none; border: 1px solid #475569; color: var(--text-main); 
+                    padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; display: flex; 
+                    align-items: center; gap: 0.6rem; transition: all 0.2s;
+                }
+                .export-btn:hover { background-color: #334155; border-color: var(--primary); }
+                .export-btn.all:hover { border-color: var(--warning); }
+
+                /* Utils */
+                .actions { display: flex; gap: 0.5rem; }
+                .role-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.75rem; background-color: #0f172a; border-radius: 8px; }
+                .role-cb-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; padding: 4px; }
             `}</style>
         </div>
     );

@@ -348,7 +348,7 @@ const CalendarPage: React.FC = () => {
         .mtg-card { background-color: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px; padding: 1rem; display: flex; align-items: center; justify-content: space-between; text-align: left; transition: all 0.2s; }
         .mtg-card:hover { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
         .mtg-card-info { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
-        .mtg-card-info strong { font-size: 1rem; }
+        .mtg-card-info strong { font-size: 1rem; color: #ffffff; }
         .mtg-card-info .timing { font-size: 0.75rem; color: var(--warning); font-weight: 600; }
         .mtg-card-info p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
 

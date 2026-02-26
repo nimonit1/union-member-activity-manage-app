@@ -414,6 +414,7 @@ const TaskList: React.FC = () => {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          color: #ffffff;
         }
 
         .tpl-desc {
