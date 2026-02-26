@@ -7,40 +7,72 @@ import { useNavigate } from 'react-router-dom';
 const Dashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [currentRoleId, setCurrentRoleId] = useState('');
+  const [showAllItems, setShowAllItems] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     setTasks(storage.getTasks());
     setEvents(storage.getEvents());
+    setCurrentRoleId(storage.getCurrentRoleId());
+    setShowAllItems(storage.getShowAllItems());
   }, []);
 
+  const taskDefs = storage.getTaskDefinitions();
+  const mtgDefs = storage.getMeetingDefinitions();
+
+  // フィルタリング
+  const isTaskVisible = (t: Task) => {
+    if (showAllItems) return true;
+    const def = taskDefs.find((d: any) => d.title === t.title);
+    if (def && currentRoleId) return def.roleIds.includes(currentRoleId);
+    return true;
+  };
+
+  const isEventVisible = (e: ScheduleEvent) => {
+    if (showAllItems) return true;
+    const def = mtgDefs.find((d: any) => d.name === e.title);
+    if (def && currentRoleId) return def.roleIds.includes(currentRoleId);
+    return true;
+  };
+
+  const visibleTasks = tasks.filter(isTaskVisible);
+  const visibleEvents = events.filter(isEventVisible);
+
   // 集計ロジック
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-  const unionTasks = tasks.filter(t => t.category === 'union_member');
+  const completedTasks = visibleTasks.filter(t => t.status === 'completed');
+  const unionTasks = visibleTasks.filter(t => t.category === 'union_member');
   const lowResponseTasks = unionTasks.filter(t => t.responseRate !== undefined && t.responseRate < 50 && t.status !== 'completed');
 
   const today = new Date().toISOString().split('T')[0];
-  const todayEvents = events.filter(e => e.date === today);
+  const todayEvents = visibleEvents.filter(e => e.date === today);
 
   // 当月の旅費合計
   const currentMonth = new Date().toISOString().substring(0, 7);
-  const monthlyExpense = events
+  const monthlyExpense = visibleEvents
     .filter(e => e.date.startsWith(currentMonth) && e.expense)
     .reduce((sum, e) => sum + (e.expense?.totalAmount || 0), 0);
 
   return (
     <div className="dashboard">
       <header className="page-header">
-        <h1>ダッシュボード</h1>
-        <p className="subtitle">こんにちは、今日も活動お疲れ様です。</p>
+        <div className="header-main">
+          <h1>ダッシュボード</h1>
+          <p className="subtitle">こんにちは、今日も活動お疲れ様です。</p>
+        </div>
+        {currentRoleId && (
+          <div className="role-tag">
+            役職: {storage.getRoles().find((r: any) => r.id === currentRoleId)?.name || currentRoleId}
+          </div>
+        )}
       </header>
 
       <div className="summary-grid">
         <div className="summary-card">
           <div className="card-icon blue"><CheckSquare size={24} /></div>
           <div className="card-info">
-            <span className="label">全タスク</span>
-            <span className="value">{tasks.length} <small>/ {completedTasks.length} 完了</small></span>
+            <span className="label">担当タスク</span>
+            <span className="value">{visibleTasks.length} <small>/ {completedTasks.length} 完了</small></span>
           </div>
         </div>
         <div className="summary-card">
@@ -199,6 +231,22 @@ const Dashboard: React.FC = () => {
           border-radius: 12px;
           padding: 1.5rem;
           border: 1px solid #334155;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+        }
+
+        .role-tag {
+          font-size: 0.75rem;
+          color: var(--primary);
+          background-color: rgba(59, 130, 246, 0.1);
+          padding: 0.4rem 1rem;
+          border-radius: 20px;
+          border: 1px solid var(--primary);
+          font-weight: 700;
         }
 
         .section-header {

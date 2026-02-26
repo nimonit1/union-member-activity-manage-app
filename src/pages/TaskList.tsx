@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { TASK_TEMPLATES } from '../utils/templates';
-import { Task, TaskCategory, TaskStatus, Priority } from '../types';
-import { Plus, Copy, Trash2, Check, Clock, Edit2, X } from 'lucide-react';
+import { Task, TaskCategory, TaskStatus, Priority, TaskDefinition } from '../types';
+import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter } from 'lucide-react';
 
 const TaskList: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskDefs, setTaskDefs] = useState<TaskDefinition[]>([]);
+  const [currentRoleId, setCurrentRoleId] = useState('');
+  const [showAllItems, setShowAllItems] = useState(false);
   const [activeTab, setActiveTab] = useState<TaskCategory>('union_member');
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [isEditingDate, setIsEditingDate] = useState<string | null>(null);
 
   useEffect(() => {
     setTasks(storage.getTasks());
+    setTaskDefs(storage.getTaskDefinitions());
+    setCurrentRoleId(storage.getCurrentRoleId());
+    setShowAllItems(storage.getShowAllItems());
   }, []);
 
   const saveTasks = (newTasks: Task[]) => {
@@ -51,26 +56,49 @@ const TaskList: React.FC = () => {
     saveTasks([newTask, ...tasks]);
   };
 
-  const createFromTemplate = (tplId: string) => {
-    const tpl = TASK_TEMPLATES.find(t => t.id === tplId);
-    if (!tpl) return;
+  const createFromTemplate = (defId: string) => {
+    const def = taskDefs.find(t => t.id === defId);
+    if (!def) return;
 
     const newTask: Task = {
       id: Date.now().toString(),
-      title: tpl.title,
-      description: tpl.description,
-      category: tpl.category,
+      title: def.title,
+      description: def.description,
+      category: def.category,
       status: 'todo',
-      priority: tpl.priority,
+      priority: def.priority,
       createdAt: new Date().toISOString(),
-      responseRate: tpl.category === 'union_member' ? 0 : undefined,
+      responseRate: def.category === 'union_member' ? 0 : undefined,
     };
 
     saveTasks([newTask, ...tasks]);
-    setActiveTab(tpl.category);
+    setActiveTab(def.category);
   };
 
-  const filteredTasks = tasks.filter(t => t.category === activeTab);
+  // フィルタリングロジック
+  const filteredTasks = tasks.filter(t => {
+    const matchesTab = t.category === activeTab;
+    if (!matchesTab) return false;
+
+    // 全表示モードなら他はチェックしない
+    if (showAllItems) return true;
+
+    // 役職に紐付いたタスク（定義から作成された場合）のチェック
+    // 既存のタスクに roleIds がない場合（直接作成された等）は表示する
+    const taskDef = taskDefs.find(d => d.title === t.title); // タイトルで簡易一致
+    if (taskDef && currentRoleId) {
+      return taskDef.roleIds.includes(currentRoleId);
+    }
+
+    return true;
+  });
+
+  // クイック作成用テンプレートの絞り込み
+  const visibleTemplates = taskDefs.filter(def => {
+    if (showAllItems) return true;
+    if (!currentRoleId) return true;
+    return def.roleIds.includes(currentRoleId);
+  });
 
   const getStatusLabel = (status: TaskStatus) => {
     switch (status) {
@@ -118,6 +146,12 @@ const TaskList: React.FC = () => {
       <header className="page-header">
         <h1>タスク管理</h1>
         <div className="header-actions">
+          {!showAllItems && currentRoleId && (
+            <span className="filter-status">
+              <Filter size={14} />
+              役職フィルタ有効
+            </span>
+          )}
           <button className="primary-btn" onClick={openNewTaskModal}>
             <Plus size={18} />
             手動で追加
@@ -126,16 +160,20 @@ const TaskList: React.FC = () => {
       </header>
 
       <section className="templates-section">
-        <h3>クイック作成 (テンプレート)</h3>
+        <h3>クイック作成 (定型タスク)</h3>
         <div className="template-grid">
-          {TASK_TEMPLATES.map(tpl => (
-            <button key={tpl.id} className="template-card" onClick={() => createFromTemplate(tpl.id)}>
-              <div className={`tpl-icon ${tpl.category}`}>
-                {tpl.category === 'union_member' ? '🔴' : '🔵'}
+          {visibleTemplates.map(def => (
+            <button key={def.id} className="template-card" onClick={() => createFromTemplate(def.id)}>
+              <div className={`tpl-icon ${def.category}`}>
+                {def.category === 'union_member' ? '🔴' : '🔵'}
               </div>
-              <span>{tpl.title}</span>
+              <div className="tpl-text">
+                <span className="tpl-title">{def.title}</span>
+                <span className="tpl-desc">{def.description.substring(0, 20)}...</span>
+              </div>
             </button>
           ))}
+          {visibleTemplates.length === 0 && <p className="empty-hint">この役職の定型タスクはありません。設定から追加できます。</p>}
         </div>
       </section>
 
@@ -333,6 +371,24 @@ const TaskList: React.FC = () => {
           margin: 0 auto;
         }
 
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .filter-status {
+          font-size: 0.75rem;
+          color: var(--primary);
+          background-color: rgba(59, 130, 246, 0.1);
+          padding: 0.4rem 0.8rem;
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-weight: 600;
+        }
+
         .header-actions .primary-btn {
           background-color: var(--primary);
           color: white;
@@ -343,6 +399,40 @@ const TaskList: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+        }
+
+        .tpl-text {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+          overflow: hidden;
+        }
+
+        .tpl-title {
+          font-size: 0.875rem;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .tpl-desc {
+          font-size: 0.65rem;
+          color: var(--text-muted);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .empty-hint {
+          grid-column: 1 / -1;
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          font-style: italic;
+          padding: 1rem;
+          border: 1px dashed #334155;
+          border-radius: 8px;
+          text-align: center;
         }
 
         .templates-section h3 {

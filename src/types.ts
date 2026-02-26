@@ -57,9 +57,37 @@ export interface TaskTemplate {
     category: TaskCategory;
     priority: Priority;
 }
+
+export interface Role {
+    id: string;
+    name: string;
+}
+
+export interface TaskDefinition {
+    id: string;
+    title: string;
+    description: string;
+    category: TaskCategory;
+    priority: Priority;
+    roleIds: string[]; // 紐付ける役職IDの配列
+}
+
+export interface MeetingDefinition {
+    id: string;
+    name: string;
+    content: string;
+    timing: string; // 開催時期・頻度（例：毎月第1月曜日）
+    roleIds: string[]; // 紐付ける役職IDの配列
+}
+
 export interface AppState {
     version: number;
     tasks: Task[];
     events: ScheduleEvent[];
+    roles?: Role[];
+    taskDefinitions?: TaskDefinition[];
+    meetingDefinitions?: MeetingDefinition[];
+    currentRoleId?: string;
+    showAllItems?: boolean;
     lastSyncedAt?: string;
 }

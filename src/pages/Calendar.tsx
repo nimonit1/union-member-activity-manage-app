@@ -1,20 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { ScheduleEvent, EventCategory, Task } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X } from 'lucide-react';
+import { ScheduleEvent, EventCategory, Task, MeetingDefinition } from '../types';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [mtgDefs, setMtgDefs] = useState<MeetingDefinition[]>([]);
+    const [currentRoleId, setCurrentRoleId] = useState('');
+    const [showAllItems, setShowAllItems] = useState(false);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
     const [editFormData, setEditFormData] = useState<Partial<ScheduleEvent>>({});
+    const [showMtgModal, setShowMtgModal] = useState(false);
 
     useEffect(() => {
         setEvents(storage.getEvents());
         setTasks(storage.getTasks());
+        setMtgDefs(storage.getMeetingDefinitions());
+        setCurrentRoleId(storage.getCurrentRoleId());
+        setShowAllItems(storage.getShowAllItems());
     }, []);
 
     const saveEvents = (newEvents: ScheduleEvent[]) => {
@@ -62,6 +69,35 @@ const CalendarPage: React.FC = () => {
         setEditingEventId(null);
     };
 
+    const getFilteredEvents = (dateStr: string) => {
+        return events.filter(e => {
+            if (e.date !== dateStr) return false;
+            if (showAllItems) return true;
+
+            // 会議体定義に基づく予定かチェック
+            const def = mtgDefs.find(d => d.name === e.title);
+            if (def && currentRoleId) {
+                return def.roleIds.includes(currentRoleId);
+            }
+            return true;
+        });
+    };
+
+    const getFilteredTasks = (dateStr: string) => {
+        return tasks.filter(t => {
+            if (t.dueDate !== dateStr) return false;
+            if (showAllItems) return true;
+
+            // タスク管理側のロジックと同様
+            const storageDefs = storage.getTaskDefinitions();
+            const def = storageDefs.find((d: any) => d.title === t.title);
+            if (def && currentRoleId) {
+                return def.roleIds.includes(currentRoleId);
+            }
+            return true;
+        });
+    };
+
     const handleAddEvent = () => {
         if (!selectedDate) return;
         const newEvent: ScheduleEvent = {
@@ -75,14 +111,37 @@ const CalendarPage: React.FC = () => {
         handleStartEdit(newEvent);
     };
 
+    const handleAddFromDef = (def: MeetingDefinition) => {
+        if (!selectedDate) return;
+        const newEvent: ScheduleEvent = {
+            id: Date.now().toString(),
+            title: def.name,
+            memo: def.content,
+            date: selectedDate,
+            category: 'meeting',
+            expense: { routes: [], totalAmount: 0 }
+        };
+        saveEvents([...events, newEvent]);
+        setShowMtgModal(false);
+        handleStartEdit(newEvent);
+    };
+
     return (
         <div className="calendar-page">
             <header className="page-header">
                 <h1>スケジュール管理</h1>
-                <div className="month-nav">
-                    <button className="icon-btn" onClick={prevMonth}><ChevronLeft /></button>
-                    <span className="current-month-label">{year}年 {month + 1}月</span>
-                    <button className="icon-btn" onClick={nextMonth}><ChevronRight /></button>
+                <div className="header-actions">
+                    {!showAllItems && currentRoleId && (
+                        <span className="filter-status">
+                            <Filter size={14} />
+                            役職フィルタ有効
+                        </span>
+                    )}
+                    <div className="month-nav">
+                        <button className="icon-btn" onClick={prevMonth}><ChevronLeft /></button>
+                        <span className="current-month-label">{year}年 {month + 1}月</span>
+                        <button className="icon-btn" onClick={nextMonth}><ChevronRight /></button>
+                    </div>
                 </div>
             </header>
 
@@ -93,27 +152,33 @@ const CalendarPage: React.FC = () => {
                             {['日', '月', '火', '水', '木', '金', '土'].map(d => <div key={d} className="weekday-label">{d}</div>)}
                         </div>
                         <div className="calendar-grid">
-                            {days.map((day, idx) => (
-                                <div
-                                    key={idx}
-                                    className={`calendar-day ${day === null ? 'empty' : ''} ${day && getDayString(day) === selectedDate ? 'selected' : ''} ${day && getDayString(day) === new Date().toISOString().split('T')[0] ? 'today' : ''}`}
-                                    onClick={() => day && setSelectedDate(getDayString(day))}
-                                >
-                                    {day && (
-                                        <>
-                                            <span className="day-number">{day}</span>
-                                            <div className="day-events">
-                                                {events.filter(e => e.date === getDayString(day!)).map(e => (
-                                                    <div key={e.id} className={`event-dot ${e.category}`}></div>
-                                                ))}
-                                                {tasks.filter(t => t.dueDate === getDayString(day!) && t.status !== 'completed').map(t => (
-                                                    <div key={t.id} className="task-dot"></div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
+                            {days.map((day, idx) => {
+                                const dateStr = day ? getDayString(day) : '';
+                                const dayEvents = day ? getFilteredEvents(dateStr) : [];
+                                const dayTasks = day ? getFilteredTasks(dateStr) : [];
+
+                                return (
+                                    <div
+                                        key={idx}
+                                        className={`calendar-day ${day === null ? 'empty' : ''} ${day && getDayString(day) === selectedDate ? 'selected' : ''} ${day && getDayString(day) === new Date().toISOString().split('T')[0] ? 'today' : ''}`}
+                                        onClick={() => day && setSelectedDate(getDayString(day))}
+                                    >
+                                        {day && (
+                                            <>
+                                                <span className="day-number">{day}</span>
+                                                <div className="day-events">
+                                                    {dayEvents.map(e => (
+                                                        <div key={e.id} className={`event-dot ${e.category}`}></div>
+                                                    ))}
+                                                    {dayTasks.filter(t => t.status !== 'completed').map(t => (
+                                                        <div key={t.id} className="task-dot"></div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -123,11 +188,14 @@ const CalendarPage: React.FC = () => {
                         <div className="detail-panel">
                             <div className="panel-header">
                                 <h3>{selectedDate} の予定</h3>
-                                <button className="small-primary-btn" onClick={handleAddEvent}><Plus size={16} /> 予定追加</button>
+                                <div className="add-actions">
+                                    <button className="small-primary-btn" onClick={() => setShowMtgModal(true)}><Shield size={16} /> 会議体</button>
+                                    <button className="small-primary-btn" onClick={handleAddEvent}><Plus size={16} /> 追加</button>
+                                </div>
                             </div>
 
                             <div className="event-list">
-                                {events.filter(e => e.date === selectedDate).map(event => (
+                                {getFilteredEvents(selectedDate).map(event => (
                                     <div key={event.id} className="event-item-container">
                                         {editingEventId === event.id ? (
                                             <div className="event-edit-form">
@@ -216,6 +284,32 @@ const CalendarPage: React.FC = () => {
                 </div>
             </div>
 
+            {showMtgModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h2>会議体定義から作成</h2>
+                            <button className="close-btn" onClick={() => setShowMtgModal(false)}><X size={20} /></button>
+                        </div>
+                        <div className="mtg-grid">
+                            {mtgDefs.filter(d => showAllItems || !currentRoleId || d.roleIds.includes(currentRoleId)).map(def => (
+                                <button key={def.id} className="mtg-card" onClick={() => handleAddFromDef(def)}>
+                                    <div className="mtg-card-info">
+                                        <strong>{def.name}</strong>
+                                        <span className="timing">{def.timing}</span>
+                                        <p>{def.content}</p>
+                                    </div>
+                                    <Plus size={20} />
+                                </button>
+                            ))}
+                            {mtgDefs.filter(d => showAllItems || !currentRoleId || d.roleIds.includes(currentRoleId)).length === 0 && (
+                                <p className="empty-hint">現在選択中の役職に該当する会議体定義はありません。</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style>{`
         .calendar-page { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
         .calendar-layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; }
@@ -246,7 +340,17 @@ const CalendarPage: React.FC = () => {
 
         .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; height: fit-content; position: sticky; top: 1.5rem; }
         .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .add-actions { display: flex; gap: 0.5rem; }
         .event-list { display: flex; flex-direction: column; gap: 1rem; }
+        .ev-memo { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; border-top: 1px solid #334155; padding-top: 0.5rem; font-style: italic; }
+
+        .mtg-grid { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
+        .mtg-card { background-color: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px; padding: 1rem; display: flex; align-items: center; justify-content: space-between; text-align: left; transition: all 0.2s; }
+        .mtg-card:hover { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
+        .mtg-card-info { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
+        .mtg-card-info strong { font-size: 1rem; }
+        .mtg-card-info .timing { font-size: 0.75rem; color: var(--warning); font-weight: 600; }
+        .mtg-card-info p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
 
         .event-display-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid #334155; border-radius: 10px; padding: 1rem; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
         .event-display-card:hover { transform: translateY(-2px); border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }

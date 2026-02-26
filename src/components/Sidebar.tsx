@@ -39,9 +39,9 @@ const Sidebar: React.FC = () => {
           <User size={18} />
           <span>組合役員 A</span>
         </div>
-        <button className="settings-btn" title="設定">
+        <NavLink to="/settings" className="settings-btn" title="設定">
           <Settings size={18} />
-        </button>
+        </NavLink>
       </div>
 
       <style>{`

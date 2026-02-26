@@ -48,10 +48,32 @@ export const storage = {
             const cloudData = migrateData(rawData);
             storage.saveTasks(cloudData.tasks);
             storage.saveEvents(cloudData.events);
+            // 他の設定データもlocalStorageにキャッシュ（必要に応じて）
+            if (cloudData.roles) localStorage.setItem('union_app_roles', JSON.stringify(cloudData.roles));
+            if (cloudData.taskDefinitions) localStorage.setItem('union_app_task_defs', JSON.stringify(cloudData.taskDefinitions));
+            if (cloudData.meetingDefinitions) localStorage.setItem('union_app_mtg_defs', JSON.stringify(cloudData.meetingDefinitions));
+            if (cloudData.currentRoleId) localStorage.setItem('union_app_current_role', cloudData.currentRoleId);
+            localStorage.setItem('union_app_show_all', String(cloudData.showAllItems || false));
         } else {
             // クラウドにデータがない場合（初回）、現在のローカルデータをアップロード
             await storage.uploadToCloud();
         }
+    },
+
+    // 補助的なゲッター
+    getRoles: () => JSON.parse(localStorage.getItem('union_app_roles') || '[]'),
+    getTaskDefinitions: () => JSON.parse(localStorage.getItem('union_app_task_defs') || '[]'),
+    getMeetingDefinitions: () => JSON.parse(localStorage.getItem('union_app_mtg_defs') || '[]'),
+    getCurrentRoleId: () => localStorage.getItem('union_app_current_role') || '',
+    getShowAllItems: () => localStorage.getItem('union_app_show_all') === 'true',
+
+    saveSettings: (settings: { roles: any[], taskDefinitions: any[], meetingDefinitions: any[], currentRoleId: string, showAllItems: boolean }) => {
+        localStorage.setItem('union_app_roles', JSON.stringify(settings.roles));
+        localStorage.setItem('union_app_task_defs', JSON.stringify(settings.taskDefinitions));
+        localStorage.setItem('union_app_mtg_defs', JSON.stringify(settings.meetingDefinitions));
+        localStorage.setItem('union_app_current_role', settings.currentRoleId);
+        localStorage.setItem('union_app_show_all', String(settings.showAllItems));
+        storage.uploadToCloud();
     },
 
     /**
@@ -65,6 +87,11 @@ export const storage = {
             version: CURRENT_VERSION,
             tasks: storage.getTasks(),
             events: storage.getEvents(),
+            roles: storage.getRoles(),
+            taskDefinitions: storage.getTaskDefinitions(),
+            meetingDefinitions: storage.getMeetingDefinitions(),
+            currentRoleId: storage.getCurrentRoleId(),
+            showAllItems: storage.getShowAllItems(),
             lastSyncedAt: new Date().toISOString()
         };
 
