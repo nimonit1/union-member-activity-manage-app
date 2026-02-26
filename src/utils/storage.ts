@@ -1,5 +1,6 @@
 import { Task, ScheduleEvent, AppState } from '../types';
 import { googleDrive } from './googleDrive';
+import { migrateData, CURRENT_VERSION } from './migrations';
 
 /**
  * localStorage を使用した簡易的なデータ永続化とクラウド同期
@@ -40,10 +41,11 @@ export const storage = {
         if (!googleDrive.isAuthenticated()) return;
 
         const fileId = await googleDrive.getOrCreateFile(SYNC_FILE_NAME);
-        const cloudData = await googleDrive.getFileContent(fileId) as AppState | null;
+        const rawData = await googleDrive.getFileContent(fileId);
 
-        if (cloudData) {
-            // クラウドにデータがある場合、ローカルを更新
+        if (rawData) {
+            // クラウドにデータがある場合、マイグレーションを適用してからローカルを更新
+            const cloudData = migrateData(rawData);
             storage.saveTasks(cloudData.tasks);
             storage.saveEvents(cloudData.events);
         } else {
@@ -60,6 +62,7 @@ export const storage = {
 
         const fileId = await googleDrive.getOrCreateFile(SYNC_FILE_NAME);
         const appState: AppState = {
+            version: CURRENT_VERSION,
             tasks: storage.getTasks(),
             events: storage.getEvents(),
             lastSyncedAt: new Date().toISOString()

@@ -58,6 +58,7 @@ export interface TaskTemplate {
     priority: Priority;
 }
 export interface AppState {
+    version: number;
     tasks: Task[];
     events: ScheduleEvent[];
     lastSyncedAt?: string;
