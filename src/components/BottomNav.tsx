@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
     const menuItems = [
         { name: 'ダッシュ', path: '/', icon: <LayoutDashboard size={20} /> },
         { name: 'タスク', path: '/tasks', icon: <CheckSquare size={20} /> },
         { name: '予定', path: '/calendar', icon: <CalendarIcon size={20} /> },
+        { name: '設定', path: '/settings', icon: <Settings size={20} /> },
     ];
 
     return (
