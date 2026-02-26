@@ -253,41 +253,43 @@ const SettingsPage: React.FC = () => {
                     </div>
                     {openSections.roles && (
                         <div className="section-content">
-                            <table className="settings-table">
-                                <thead>
-                                    <tr>
-                                        <th>役職名</th>
-                                        <th style={{ width: '100px' }}>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {roles.map(role => (
-                                        <tr key={role.id}>
-                                            <td>{role.name}</td>
+                            <div className="table-container">
+                                <table className="settings-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ minWidth: '150px' }}>役職名</th>
+                                            <th style={{ width: '100px' }}>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roles.map(role => (
+                                            <tr key={role.id}>
+                                                <td>{role.name}</td>
+                                                <td>
+                                                    <div className="actions">
+                                                        <button className="icon-btn" onClick={() => setEditingRole(role)}><Edit2 size={14} /></button>
+                                                        <button className="icon-btn delete" onClick={() => handleDeleteRole(role.id)}><Trash2 size={14} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        <tr className="adding-row">
                                             <td>
-                                                <div className="actions">
-                                                    <button className="icon-btn" onClick={() => setEditingRole(role)}><Edit2 size={14} /></button>
-                                                    <button className="icon-btn delete" onClick={() => handleDeleteRole(role.id)}><Trash2 size={14} /></button>
-                                                </div>
+                                                <input
+                                                    value={newRoleName}
+                                                    onChange={e => setNewRoleName(e.target.value)}
+                                                    placeholder="新しい役職名を入力..."
+                                                />
+                                            </td>
+                                            <td>
+                                                <button className="add-inline-btn" onClick={handleAddRole} disabled={!newRoleName}>
+                                                    <Plus size={16} /> 追加
+                                                </button>
                                             </td>
                                         </tr>
-                                    ))}
-                                    <tr className="adding-row">
-                                        <td>
-                                            <input
-                                                value={newRoleName}
-                                                onChange={e => setNewRoleName(e.target.value)}
-                                                placeholder="新しい役職名を入力..."
-                                            />
-                                        </td>
-                                        <td>
-                                            <button className="add-inline-btn" onClick={handleAddRole} disabled={!newRoleName}>
-                                                <Plus size={16} /> 追加
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -300,69 +302,71 @@ const SettingsPage: React.FC = () => {
                         {openSections.tasks ? <ChevronDown /> : <ChevronRight />}
                     </div>
                     {openSections.tasks && (
-                        <div className="section-content overflow-x">
-                            <table className="settings-table">
-                                <thead>
-                                    <tr>
-                                        <th>タスク名</th>
-                                        <th>カテゴリ</th>
-                                        <th>優先度</th>
-                                        <th>対象役職</th>
-                                        <th style={{ width: '100px' }}>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {taskDefs.map(def => (
-                                        <tr key={def.id}>
-                                            <td>
-                                                <strong>{def.title}</strong>
-                                                <div className="sub-text">{def.description}</div>
-                                            </td>
-                                            <td>{def.category === 'union_member' ? '🔴 組合員' : '🔵 事務'}</td>
-                                            <td><span className={`prio-tag ${def.priority}`}>{def.priority}</span></td>
-                                            <td>
-                                                <div className="role-mini-badges">
-                                                    {def.roleIds.length > 0 ? def.roleIds.map(rid => (
-                                                        <span key={rid} className="mini-badge">
-                                                            {roles.find(r => r.id === rid)?.name || rid}
-                                                        </span>
-                                                    )) : <span className="empty-hint">全員</span>}
+                        <div className="section-content">
+                            <div className="table-container">
+                                <table className="settings-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ minWidth: '180px' }}>タスク名</th>
+                                            <th style={{ minWidth: '100px' }}>カテゴリ</th>
+                                            <th style={{ minWidth: '80px' }}>優先度</th>
+                                            <th style={{ minWidth: '120px' }}>対象役職</th>
+                                            <th style={{ width: '100px' }}>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {taskDefs.map(def => (
+                                            <tr key={def.id}>
+                                                <td>
+                                                    <strong>{def.title}</strong>
+                                                    <div className="sub-text">{def.description}</div>
+                                                </td>
+                                                <td>{def.category === 'union_member' ? '🔴 組合員' : '🔵 事務'}</td>
+                                                <td><span className={`prio-tag ${def.priority}`}>{def.priority}</span></td>
+                                                <td>
+                                                    <div className="role-mini-badges">
+                                                        {def.roleIds.length > 0 ? def.roleIds.map(rid => (
+                                                            <span key={rid} className="mini-badge">
+                                                                {roles.find(r => r.id === rid)?.name || rid}
+                                                            </span>
+                                                        )) : <span className="empty-hint">全員</span>}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="actions">
+                                                        <button className="icon-btn" onClick={() => setEditingTaskDef(def)}><Edit2 size={14} /></button>
+                                                        <button className="icon-btn delete" onClick={() => handleDeleteTaskDef(def.id)}><Trash2 size={14} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        <tr className="adding-row complex">
+                                            <td colSpan={5}>
+                                                <div className="inline-form">
+                                                    <input
+                                                        value={newTaskDef.title}
+                                                        onChange={e => setNewTaskDef({ ...newTaskDef, title: e.target.value })}
+                                                        placeholder="新しい定型タスク名..."
+                                                    />
+                                                    <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any })}>
+                                                        <option value="union_member">🔴 組合員</option>
+                                                        <option value="administrative">🔵 事務</option>
+                                                    </select>
+                                                    <select value={newTaskDef.priority} onChange={e => setNewTaskDef({ ...newTaskDef, priority: e.target.value as any })}>
+                                                        <option value="high">高</option>
+                                                        <option value="medium">中</option>
+                                                        <option value="low">低</option>
+                                                    </select>
+                                                    <button className="add-inline-btn" onClick={handleAddTaskDef} disabled={!newTaskDef.title}>
+                                                        <Plus size={16} /> 追加
+                                                    </button>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <div className="actions">
-                                                    <button className="icon-btn" onClick={() => setEditingTaskDef(def)}><Edit2 size={14} /></button>
-                                                    <button className="icon-btn delete" onClick={() => handleDeleteTaskDef(def.id)}><Trash2 size={14} /></button>
-                                                </div>
+                                                <p className="hint">※詳細は追加後の編集から設定してください</p>
                                             </td>
                                         </tr>
-                                    ))}
-                                    <tr className="adding-row complex">
-                                        <td colSpan={5}>
-                                            <div className="inline-form">
-                                                <input
-                                                    value={newTaskDef.title}
-                                                    onChange={e => setNewTaskDef({ ...newTaskDef, title: e.target.value })}
-                                                    placeholder="新しい定型タスク名..."
-                                                />
-                                                <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any })}>
-                                                    <option value="union_member">🔴 組合員</option>
-                                                    <option value="administrative">🔵 事務</option>
-                                                </select>
-                                                <select value={newTaskDef.priority} onChange={e => setNewTaskDef({ ...newTaskDef, priority: e.target.value as any })}>
-                                                    <option value="high">高</option>
-                                                    <option value="medium">中</option>
-                                                    <option value="low">低</option>
-                                                </select>
-                                                <button className="add-inline-btn" onClick={handleAddTaskDef} disabled={!newTaskDef.title}>
-                                                    <Plus size={16} /> タスク定義を追加
-                                                </button>
-                                            </div>
-                                            <p className="hint">※詳細な説明や担当役職の設定は、追加後に「編集」から行ってください。</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -375,62 +379,64 @@ const SettingsPage: React.FC = () => {
                         {openSections.meetings ? <ChevronDown /> : <ChevronRight />}
                     </div>
                     {openSections.meetings && (
-                        <div className="section-content overflow-x">
-                            <table className="settings-table">
-                                <thead>
-                                    <tr>
-                                        <th>会議体名</th>
-                                        <th>時期・頻度</th>
-                                        <th>参加役職</th>
-                                        <th style={{ width: '100px' }}>操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {mtgDefs.map(def => (
-                                        <tr key={def.id}>
-                                            <td>
-                                                <strong>{def.name}</strong>
-                                                <div className="sub-text">{def.content}</div>
-                                            </td>
-                                            <td><span className="timing-text">{def.timing}</span></td>
-                                            <td>
-                                                <div className="role-mini-badges">
-                                                    {def.roleIds.length > 0 ? def.roleIds.map(rid => (
-                                                        <span key={rid} className="mini-badge">
-                                                            {roles.find(r => r.id === rid)?.name || rid}
-                                                        </span>
-                                                    )) : <span className="empty-hint">全員</span>}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div className="actions">
-                                                    <button className="icon-btn" onClick={() => setEditingMtgDef(def)}><Edit2 size={14} /></button>
-                                                    <button className="icon-btn delete" onClick={() => handleDeleteMtgDef(def.id)}><Trash2 size={14} /></button>
+                        <div className="section-content">
+                            <div className="table-container">
+                                <table className="settings-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ minWidth: '150px' }}>会議体名</th>
+                                            <th style={{ minWidth: '150px' }}>時期・頻度</th>
+                                            <th style={{ minWidth: '120px' }}>参加役職</th>
+                                            <th style={{ width: '100px' }}>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {mtgDefs.map(def => (
+                                            <tr key={def.id}>
+                                                <td>
+                                                    <strong>{def.name}</strong>
+                                                    <div className="sub-text">{def.content}</div>
+                                                </td>
+                                                <td><span className="timing-text">{def.timing}</span></td>
+                                                <td>
+                                                    <div className="role-mini-badges">
+                                                        {def.roleIds.length > 0 ? def.roleIds.map(rid => (
+                                                            <span key={rid} className="mini-badge">
+                                                                {roles.find(r => r.id === rid)?.name || rid}
+                                                            </span>
+                                                        )) : <span className="empty-hint">全員</span>}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="actions">
+                                                        <button className="icon-btn" onClick={() => setEditingMtgDef(def)}><Edit2 size={14} /></button>
+                                                        <button className="icon-btn delete" onClick={() => handleDeleteMtgDef(def.id)}><Trash2 size={14} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        <tr className="adding-row complex">
+                                            <td colSpan={4}>
+                                                <div className="inline-form">
+                                                    <input
+                                                        value={newMtgDef.name}
+                                                        onChange={e => setNewMtgDef({ ...newMtgDef, name: e.target.value })}
+                                                        placeholder="会議体名..."
+                                                    />
+                                                    <input
+                                                        value={newMtgDef.timing}
+                                                        onChange={e => setNewMtgDef({ ...newMtgDef, timing: e.target.value })}
+                                                        placeholder="頻度（毎月第1月曜）"
+                                                    />
+                                                    <button className="add-inline-btn" onClick={handleAddMtgDef} disabled={!newMtgDef.name}>
+                                                        <Plus size={16} /> 追加
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
-                                    <tr className="adding-row complex">
-                                        <td colSpan={4}>
-                                            <div className="inline-form">
-                                                <input
-                                                    value={newMtgDef.name}
-                                                    onChange={e => setNewMtgDef({ ...newMtgDef, name: e.target.value })}
-                                                    placeholder="会議体名..."
-                                                />
-                                                <input
-                                                    value={newMtgDef.timing}
-                                                    onChange={e => setNewMtgDef({ ...newMtgDef, timing: e.target.value })}
-                                                    placeholder="頻度（例：毎月第1月曜）"
-                                                />
-                                                <button className="add-inline-btn" onClick={handleAddMtgDef} disabled={!newMtgDef.name}>
-                                                    <Plus size={16} /> 会議体定義を追加
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -571,26 +577,37 @@ const SettingsPage: React.FC = () => {
                 .section-header:hover { background-color: rgba(255, 255, 255, 0.05); }
                 .section-header h2 { font-size: 1.1rem; flex: 1; margin: 0; }
                 .section-content { padding: 1.5rem; border-top: 1px solid #334155; background-color: var(--bg-dark); }
-                .overflow-x { overflow-x: auto; }
+                .table-container { overflow-x: auto; width: 100%; border: 1px solid #334155; border-radius: 8px; background-color: rgba(255,255,255,0.01); }
 
                 /* Settings Table */
-                .settings-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-                .settings-table th, .settings-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; text-align: left; }
-                .settings-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; background-color: rgba(255,255,255,0.02); }
-                .sub-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; }
+                .settings-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 600px; }
+                .settings-table th, .settings-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; text-align: left; vertical-align: middle; }
+                .settings-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; background-color: rgba(255,255,255,0.03); white-space: nowrap; }
+                .sub-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; white-space: normal; line-height: 1.4; }
                 .adding-row { background-color: rgba(59, 130, 246, 0.05); }
                 .adding-row td { border-bottom: none; padding-top: 1rem; }
+                .adding-row.complex td { padding: 1rem; }
                 
-                .inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+                .inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; width: 100%; }
                 .inline-form input, .inline-form select { 
                     background-color: #0f172a; border: 1px solid #334155; color: white; 
-                    padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; flex: 1; min-width: 120px;
+                    padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; flex: 1; min-width: 140px;
                 }
                 .add-inline-btn { 
-                    background-color: var(--primary); color: white; border: none; padding: 0.5rem 1rem; 
+                    background-color: var(--primary); color: white; border: none; padding: 0.5rem 1.25rem; 
                     border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;
                 }
                 .add-inline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+                /* Responsive Adjustments */
+                @media (max-width: 768px) {
+                    .section-content { padding: 1rem 0.75rem; }
+                    .settings-table th, .settings-table td { padding: 0.6rem 0.75rem; }
+                    .inline-form { flex-direction: column; align-items: stretch; }
+                    .inline-form input, .inline-form select { width: 100%; min-width: auto; }
+                    .add-inline-btn { justify-content: center; }
+                    .export-actions { flex-direction: column; }
+                }
 
                 /* Tags & Badges */
                 .prio-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
