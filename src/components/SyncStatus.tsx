@@ -61,9 +61,10 @@ const SyncStatus: React.FC = () => {
             // 同期完了後に画面をリロードまたは状態を更新する必要があるかもしれないが、
             // 今回は簡易的にリロードを促すか、親コンポーネントで管理するのが望ましい。
             // ここでは簡易的に成功メッセージを表示。
-        } catch (error) {
+        } catch (error: any) {
             console.error('Detailed Sync Error:', error);
-            alert('同期に失敗しました。F12キーのコンソールで詳細を確認できます。');
+            const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+            alert(`同期に失敗しました。\n詳細: ${errorMsg}\n\n※コンソールが確認できる場合は詳細を確認してください。`);
         } finally {
             setIsSyncing(false);
         }

@@ -176,7 +176,7 @@ export const googleDrive = {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Update Content API Error:', errorText);
+                console.error('Update Content API Error:', errorText, 'Status:', response.status);
                 throw new Error(`Update failed: ${response.status} - ${errorText}`);
             }
         } catch (error) {
