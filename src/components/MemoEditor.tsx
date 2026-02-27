@@ -8,9 +8,11 @@ interface MemoEditorProps {
     memos: MemoItem[];
     onSave: (memos: MemoItem[]) => void;
     onClose: () => void;
+    defaultLinkedEventId?: string;
+    defaultLinkedTaskId?: string;
 }
 
-const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
+const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, defaultLinkedEventId, defaultLinkedTaskId }) => {
     const [editingMemo, setEditingMemo] = useState<Partial<MemoItem> | null>(null);
 
     // 音声用
@@ -25,7 +27,9 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
             id: Date.now().toString(),
             type,
             content: '',
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            linkedEventId: defaultLinkedEventId,
+            linkedTaskId: defaultLinkedTaskId
         };
         setEditingMemo(newItem);
     };

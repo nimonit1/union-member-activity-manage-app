@@ -439,6 +439,8 @@ const CalendarPage: React.FC = () => {
                         handleSaveMemos(memoEventId, newMemos);
                     }}
                     onClose={() => setMemoEventId(null)}
+                    defaultLinkedEventId={events.some(e => e.id === memoEventId) ? memoEventId : undefined}
+                    defaultLinkedTaskId={tasks.some(t => t.id === memoEventId) ? memoEventId : undefined}
                 />
             )}
 
