@@ -14,9 +14,11 @@ const TaskList: React.FC = () => {
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [isEditingDate, setIsEditingDate] = useState<string | null>(null);
   const [memoTaskId, setMemoTaskId] = useState<string | null>(null);
+  const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
 
   useEffect(() => {
     setTasks(storage.getTasks());
+    setGlobalMemos(storage.getMemos());
     setTaskDefs(storage.getTaskDefinitions());
     setCurrentRoleId(storage.getCurrentRoleId());
     setShowAllItems(storage.getShowAllItems());
@@ -312,7 +314,7 @@ const TaskList: React.FC = () => {
                   )}
                   <button className="memo-btn-tiny" onClick={() => setMemoTaskId(task.id)}>
                     <Edit3 size={12} />
-                    メモ ({task.memos?.length || 0})
+                    メモ ({globalMemos.filter(m => m.linkedTaskId === task.id).length})
                   </button>
                 </div>
                 <div className="task-actions">
@@ -413,10 +415,12 @@ const TaskList: React.FC = () => {
 
       {memoTaskId && (
         <MemoEditor
-          memos={tasks.find(t => t.id === memoTaskId)?.memos || []}
-          onSave={(memos: MemoItem[]) => {
-            const newTasks = tasks.map(t => t.id === memoTaskId ? { ...t, memos } : t);
-            saveTasks(newTasks);
+          memos={globalMemos.filter(m => m.linkedTaskId === memoTaskId)}
+          onSave={(newMemos: MemoItem[]) => {
+            const otherMemos = globalMemos.filter(m => m.linkedTaskId !== memoTaskId);
+            const updatedGlobalMemos = [...otherMemos, ...newMemos];
+            setGlobalMemos(updatedGlobalMemos);
+            storage.saveMemos(updatedGlobalMemos);
           }}
           onClose={() => setMemoTaskId(null)}
         />

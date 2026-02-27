@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { MemoItem, MemoType, ScheduleEvent, Task } from '../types';
+import { MemoItem, ScheduleEvent, Task } from '../types';
 import { Plus, Type, Edit3, Mic, Trash2, Link as LinkIcon, Calendar, CheckSquare, Search, X } from 'lucide-react';
 import MemoEditor from '../components/MemoEditor';
 

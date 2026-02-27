@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, User, Wallet, StickyNote } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, User, StickyNote } from 'lucide-react';
 import SyncStatus from './SyncStatus';
 
 const Sidebar: React.FC = () => {

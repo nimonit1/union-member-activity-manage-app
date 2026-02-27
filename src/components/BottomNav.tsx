@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings as SettingsIcon, Wallet, StickyNote } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings as SettingsIcon, StickyNote } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
     const menuItems = [

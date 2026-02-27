@@ -4,7 +4,7 @@ import { ScheduleEvent, EventCategory, Task, MeetingDefinition } from '../types'
 import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3 } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
-import { MemoItem, TravelExpenseItem, TravelRoute } from '../types';
+import { MemoItem, TravelExpenseItem } from '../types';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
