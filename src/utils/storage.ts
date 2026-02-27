@@ -1,4 +1,4 @@
-import { Task, ScheduleEvent, AppState } from '../types';
+import { Task, ScheduleEvent, AppState, TravelExpenseItem } from '../types';
 import { googleDrive } from './googleDrive';
 import { migrateData, CURRENT_VERSION } from './migrations';
 
@@ -9,6 +9,7 @@ import { migrateData, CURRENT_VERSION } from './migrations';
 const KEYS = {
     TASKS: 'union_app_tasks',
     EVENTS: 'union_app_events',
+    TRAVEL_EXPENSES: 'union_app_travel_expenses',
 };
 
 const SYNC_FILE_NAME = 'union_app_data.json';
@@ -34,6 +35,16 @@ export const storage = {
         storage.uploadToCloud(); // バックグラウンドでアップロードを試行
     },
 
+    getTravelExpenses: (): TravelExpenseItem[] => {
+        const data = localStorage.getItem(KEYS.TRAVEL_EXPENSES);
+        return data ? JSON.parse(data) : [];
+    },
+
+    saveTravelExpenses: (expenses: TravelExpenseItem[]): void => {
+        localStorage.setItem(KEYS.TRAVEL_EXPENSES, JSON.stringify(expenses));
+        storage.uploadToCloud();
+    },
+
     /**
      * クラウドストレージ上の最新データで同期
      */
@@ -48,6 +59,7 @@ export const storage = {
             const cloudData = migrateData(rawData);
             storage.saveTasks(cloudData.tasks);
             storage.saveEvents(cloudData.events);
+            if (cloudData.travelExpenses) storage.saveTravelExpenses(cloudData.travelExpenses);
             // 他の設定データもlocalStorageにキャッシュ（必要に応じて）
             if (cloudData.roles) localStorage.setItem('union_app_roles', JSON.stringify(cloudData.roles));
             if (cloudData.taskDefinitions) localStorage.setItem('union_app_task_defs', JSON.stringify(cloudData.taskDefinitions));
@@ -64,6 +76,7 @@ export const storage = {
     getRoles: () => JSON.parse(localStorage.getItem('union_app_roles') || '[]'),
     getTaskDefinitions: () => JSON.parse(localStorage.getItem('union_app_task_defs') || '[]'),
     getMeetingDefinitions: () => JSON.parse(localStorage.getItem('union_app_mtg_defs') || '[]'),
+    setCurrentRoleId: (id: string) => localStorage.setItem('union_app_current_role', id),
     getCurrentRoleId: () => localStorage.getItem('union_app_current_role') || '',
     getShowAllItems: () => localStorage.getItem('union_app_show_all') === 'true',
 
@@ -90,6 +103,7 @@ export const storage = {
             roles: storage.getRoles(),
             taskDefinitions: storage.getTaskDefinitions(),
             meetingDefinitions: storage.getMeetingDefinitions(),
+            travelExpenses: storage.getTravelExpenses(),
             currentRoleId: storage.getCurrentRoleId(),
             showAllItems: storage.getShowAllItems(),
             lastSyncedAt: new Date().toISOString()

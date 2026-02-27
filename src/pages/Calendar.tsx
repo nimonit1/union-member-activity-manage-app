@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { ScheduleEvent, EventCategory, Task, MeetingDefinition } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3 } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
+import MemoEditor from '../components/MemoEditor';
+import { MemoItem } from '../types';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -15,6 +17,7 @@ const CalendarPage: React.FC = () => {
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
     const [editFormData, setEditFormData] = useState<Partial<ScheduleEvent>>({});
     const [showMtgModal, setShowMtgModal] = useState(false);
+    const [memoEventId, setMemoEventId] = useState<string | null>(null);
 
     useEffect(() => {
         setEvents(storage.getEvents());
@@ -124,6 +127,11 @@ const CalendarPage: React.FC = () => {
         saveEvents([...events, newEvent]);
         setShowMtgModal(false);
         handleStartEdit(newEvent);
+    };
+
+    const handleSaveMemos = (eventId: string, memos: MemoItem[]) => {
+        const newEvents = events.map(e => e.id === eventId ? { ...e, memos } : e);
+        saveEvents(newEvents);
     };
 
     return (
@@ -253,6 +261,15 @@ const CalendarPage: React.FC = () => {
                                                         <span>旅費: ¥{event.expense.totalAmount.toLocaleString()}</span>
                                                     </div>
                                                 )}
+                                                <div className="ev-memos-row">
+                                                    <button
+                                                        className="memo-btn-tiny"
+                                                        onClick={(e) => { e.stopPropagation(); setMemoEventId(event.id); }}
+                                                    >
+                                                        <Edit3 size={12} />
+                                                        メモ ({event.memos?.length || 0})
+                                                    </button>
+                                                </div>
                                                 <div className="ev-hover-hint">タップで編集</div>
                                             </div>
                                         )}
@@ -267,6 +284,12 @@ const CalendarPage: React.FC = () => {
                                         </div>
                                         <h4 className="ev-title">【タスク】{task.title}</h4>
                                         <div className="ev-loc">{task.description}</div>
+                                        <div className="ev-memos-row">
+                                            <button className="memo-btn-tiny" onClick={() => setMemoEventId(task.id)}>
+                                                <Edit3 size={12} />
+                                                メモ ({(task as any).memos?.length || 0})
+                                            </button>
+                                        </div>
                                         {task.responseRate !== undefined && (
                                             <div className="task-rate">回答率: {task.responseRate}%</div>
                                         )}
@@ -283,6 +306,22 @@ const CalendarPage: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {memoEventId && (
+                <MemoEditor
+                    memos={(events.find(e => e.id === memoEventId)?.memos || (tasks.find(t => t.id === memoEventId) as any)?.memos || [])}
+                    onSave={(memos) => {
+                        if (events.find(e => e.id === memoEventId)) {
+                            handleSaveMemos(memoEventId, memos);
+                        } else {
+                            const newTasks = tasks.map(t => t.id === memoEventId ? { ...t, memos } as Task : t);
+                            setTasks(newTasks);
+                            storage.saveTasks(newTasks);
+                        }
+                    }}
+                    onClose={() => setMemoEventId(null)}
+                />
+            )}
 
             {showMtgModal && (
                 <div className="modal-overlay">
@@ -362,6 +401,9 @@ const CalendarPage: React.FC = () => {
         .ev-title { margin-bottom: 0.5rem; }
         .ev-loc, .ev-expense { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem; }
         .ev-expense { color: var(--success); font-weight: 600; }
+        .ev-memos-row { margin-top: 0.5rem; display: flex; gap: 0.5rem; }
+        .memo-btn-tiny { background: rgba(255, 255, 255, 0.05); border: 1px solid #334155; color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .memo-btn-tiny:hover { background-color: rgba(255, 255, 255, 0.1); color: var(--text-main); }
         .ev-hover-hint { position: absolute; bottom: 0.5rem; right: 0.5rem; font-size: 0.65rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
         .event-display-card:hover .ev-hover-hint { opacity: 1; }
 

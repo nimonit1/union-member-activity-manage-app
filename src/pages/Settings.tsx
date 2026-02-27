@@ -53,7 +53,7 @@ const SettingsPage: React.FC = () => {
     const handleExport = (type: 'settings' | 'all') => {
         let dataToExport: Partial<AppState> = {};
         const fullState = {
-            version: 2,
+            version: 3,
             tasks: storage.getTasks(),
             events: storage.getEvents(),
             roles: storage.getRoles(),
@@ -137,6 +137,36 @@ const SettingsPage: React.FC = () => {
         setTaskDefs(newList);
         saveAll(roles, newList);
         setEditingTaskDef(null);
+    };
+
+    const handleAddSubtaskDef = () => {
+        if (!editingTaskDef) return;
+        const subtasks = editingTaskDef.subtasks || [];
+        const newSubtask = {
+            id: `sub-${Date.now()}`,
+            title: '',
+            order: subtasks.length
+        };
+        setEditingTaskDef({
+            ...editingTaskDef,
+            subtasks: [...subtasks, newSubtask]
+        });
+    };
+
+    const handleUpdateSubtaskDef = (id: string, title: string) => {
+        if (!editingTaskDef) return;
+        setEditingTaskDef({
+            ...editingTaskDef,
+            subtasks: (editingTaskDef.subtasks || []).map(s => s.id === id ? { ...s, title } : s)
+        });
+    };
+
+    const handleDeleteSubtaskDef = (id: string) => {
+        if (!editingTaskDef) return;
+        setEditingTaskDef({
+            ...editingTaskDef,
+            subtasks: (editingTaskDef.subtasks || []).filter(s => s.id !== id)
+        });
     };
 
     const handleDeleteTaskDef = (id: string) => {
@@ -512,6 +542,33 @@ const SettingsPage: React.FC = () => {
                                     ))}
                                 </div>
                             </div>
+                            <div className="form-group">
+                                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    サブタスク定義
+                                    <button type="button" className="add-sub-btn" onClick={handleAddSubtaskDef}>
+                                        <Plus size={14} /> サブタスクを追加
+                                    </button>
+                                </label>
+                                <div className="subtask-defs-list">
+                                    {(editingTaskDef.subtasks || []).map((sub, idx) => (
+                                        <div key={sub.id} className="subtask-def-item">
+                                            <span className="order-num">{idx + 1}</span>
+                                            <input
+                                                value={sub.title}
+                                                onChange={e => handleUpdateSubtaskDef(sub.id, e.target.value)}
+                                                placeholder="サブタスクのタイトル..."
+                                                required
+                                            />
+                                            <button type="button" className="icon-btn delete" onClick={() => handleDeleteSubtaskDef(sub.id)}>
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(editingTaskDef.subtasks || []).length === 0 && (
+                                        <p className="empty-hint">サブタスクは定義されていません。</p>
+                                    )}
+                                </div>
+                            </div>
                             <div className="modal-footer">
                                 <button type="button" onClick={() => setEditingTaskDef(null)}>キャンセル</button>
                                 <button type="submit" className="save-btn">保存</button>
@@ -563,7 +620,8 @@ const SettingsPage: React.FC = () => {
                         </form>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             <style>{`
                 .settings-page { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
@@ -638,12 +696,19 @@ const SettingsPage: React.FC = () => {
                 .export-btn:hover { background-color: #334155; border-color: var(--primary); }
                 .export-btn.all:hover { border-color: var(--warning); }
 
-                /* Utils */
                 .actions { display: flex; gap: 0.5rem; }
                 .role-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.75rem; background-color: #0f172a; border-radius: 8px; }
                 .role-cb-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; padding: 4px; }
+
+                /* Subtasks in Modal */
+                .add-sub-btn { background: none; border: 1px solid var(--primary); color: var(--primary); font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+                .add-sub-btn:hover { background-color: rgba(59, 130, 246, 0.1); }
+                .subtask-defs-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+                .subtask-def-item { display: flex; align-items: center; gap: 0.5rem; }
+                .subtask-def-item input { flex: 1; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+                .order-num { font-size: 0.75rem; color: var(--text-muted); width: 20px; text-align: center; }
             `}</style>
-        </div>
+        </div >
     );
 };
 

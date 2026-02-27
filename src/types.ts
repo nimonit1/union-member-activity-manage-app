@@ -8,6 +8,13 @@ export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'on_hold';
 
 export type Priority = 'low' | 'medium' | 'high';
 
+export interface Subtask {
+    id: string;
+    title: string;
+    isCompleted: boolean;
+    order: number;
+}
+
 export interface Task {
     id: string;
     title: string;
@@ -18,6 +25,8 @@ export interface Task {
     dueDate?: string;
     responseRate?: number; // 0 to 100, 組合員関連タスクのみ
     createdAt: string;
+    subtasks?: Subtask[];
+    memos?: MemoItem[];
 }
 
 export type EventCategory = 'meeting' | 'business_trip' | 'negotiation' | 'conference' | 'training' | 'other';
@@ -38,6 +47,15 @@ export interface TravelExpense {
     totalAmount: number;
 }
 
+export type MemoType = 'text' | 'handwriting' | 'voice';
+
+export interface MemoItem {
+    id: string;
+    type: MemoType;
+    content: string; // textなら文字列、handwritingならJSON文字列、voiceならIndexedDBのID
+    createdAt: string;
+}
+
 export interface ScheduleEvent {
     id: string;
     title: string;
@@ -46,8 +64,17 @@ export interface ScheduleEvent {
     endTime?: string;
     category: EventCategory;
     location?: string;
-    memo?: string;
-    expense?: TravelExpense;
+    memo?: string; // 互換性のための既存フィールド
+    expense?: TravelExpense; // 互換性のための既存フィールド
+    expenseId?: string; // 独立した旅費との紐付け用
+    memos?: MemoItem[];
+}
+
+export interface TravelExpenseItem extends TravelExpense {
+    id: string;
+    title: string;
+    date: string;
+    relatedEventId?: string;
 }
 
 export interface TaskTemplate {
@@ -70,6 +97,7 @@ export interface TaskDefinition {
     category: TaskCategory;
     priority: Priority;
     roleIds: string[]; // 紐付ける役職IDの配列
+    subtasks?: { id: string; title: string; order: number }[];
 }
 
 export interface MeetingDefinition {
@@ -87,6 +115,7 @@ export interface AppState {
     roles?: Role[];
     taskDefinitions?: TaskDefinition[];
     meetingDefinitions?: MeetingDefinition[];
+    travelExpenses?: TravelExpenseItem[];
     currentRoleId?: string;
     showAllItems?: boolean;
     lastSyncedAt?: string;

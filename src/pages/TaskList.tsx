@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { Task, TaskCategory, TaskStatus, Priority, TaskDefinition } from '../types';
-import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter } from 'lucide-react';
+import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter, Edit3 } from 'lucide-react';
+import MemoEditor from '../components/MemoEditor';
+import { MemoItem } from '../types';
 
 const TaskList: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -11,6 +13,7 @@ const TaskList: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TaskCategory>('union_member');
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [isEditingDate, setIsEditingDate] = useState<string | null>(null);
+  const [memoTaskId, setMemoTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     setTasks(storage.getTasks());
@@ -31,6 +34,19 @@ const TaskList: React.FC = () => {
 
   const handleResponseRateChange = (id: string, rate: number) => {
     const newTasks = tasks.map(t => t.id === id ? { ...t, response_rate: rate, responseRate: rate } : t);
+    saveTasks(newTasks);
+  };
+
+  const handleSubtaskToggle = (taskId: string, subtaskId: string) => {
+    const newTasks = tasks.map(t => {
+      if (t.id === taskId) {
+        const subtasks = (t.subtasks || []).map(s =>
+          s.id === subtaskId ? { ...s, isCompleted: !s.isCompleted } : s
+        );
+        return { ...t, subtasks };
+      }
+      return t;
+    });
     saveTasks(newTasks);
   };
 
@@ -69,6 +85,12 @@ const TaskList: React.FC = () => {
       priority: def.priority,
       createdAt: new Date().toISOString(),
       responseRate: def.category === 'union_member' ? 0 : undefined,
+      subtasks: (def.subtasks || []).map(s => ({
+        id: `sub-${Math.random().toString(36).substr(2, 9)}`,
+        title: s.title,
+        isCompleted: false,
+        order: s.order
+      }))
     };
 
     saveTasks([newTask, ...tasks]);
@@ -242,6 +264,28 @@ const TaskList: React.FC = () => {
                 </div>
               )}
 
+              {task.subtasks && task.subtasks.length > 0 && (
+                <div className="subtasks-area">
+                  <div className="subtask-header">
+                    <span>サブタスク ({task.subtasks.filter(s => s.isCompleted).length}/{task.subtasks.length})</span>
+                  </div>
+                  <div className="subtasks-list">
+                    {task.subtasks.sort((a, b) => a.order - b.order).map(sub => (
+                      <div
+                        key={sub.id}
+                        className={`subtask-item ${sub.isCompleted ? 'completed' : ''}`}
+                        onClick={() => handleSubtaskToggle(task.id, sub.id)}
+                      >
+                        <div className={`subtask-check ${sub.isCompleted ? 'checked' : ''}`}>
+                          {sub.isCompleted && <Check size={10} />}
+                        </div>
+                        <span className="subtask-title">{sub.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="task-footer">
                 <div className="task-meta">
                   <Clock size={14} />
@@ -280,86 +324,98 @@ const TaskList: React.FC = () => {
         )}
       </div>
 
-      {editingTask && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>{editingTask.id ? 'タスクを編集' : '新規タスク作成'}</h2>
-              <button className="close-btn" onClick={() => setEditingTask(null)}><X size={20} /></button>
-            </div>
-            <form onSubmit={handleSaveTask}>
-              <div className="form-group">
-                <label>タイトル</label>
-                <input
-                  type="text"
-                  required
-                  value={editingTask.title || ''}
-                  onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
-                  placeholder="例：〇〇改善案の意見集約"
-                />
+      {
+        editingTask && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h2>{editingTask.id ? 'タスクを編集' : '新規タスク作成'}</h2>
+                <button className="close-btn" onClick={() => setEditingTask(null)}><X size={20} /></button>
               </div>
-              <div className="form-group">
-                <label>説明</label>
-                <textarea
-                  rows={3}
-                  value={editingTask.description || ''}
-                  onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
-                  placeholder="詳細なメモを入力..."
-                />
-              </div>
-              <div className="form-row">
+              <form onSubmit={handleSaveTask}>
                 <div className="form-group">
-                  <label>カテゴリ</label>
-                  <select
-                    value={editingTask.category || 'union_member'}
-                    onChange={e => setEditingTask({ ...editingTask, category: e.target.value as TaskCategory })}
-                  >
-                    <option value="union_member">🔴 組合員関連</option>
-                    <option value="administrative">🔵 事務タスク</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>優先度</label>
-                  <select
-                    value={editingTask.priority || 'medium'}
-                    onChange={e => setEditingTask({ ...editingTask, priority: e.target.value as Priority })}
-                  >
-                    <option value="high">高</option>
-                    <option value="medium">中</option>
-                    <option value="low">低</option>
-                  </select>
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>期限</label>
+                  <label>タイトル</label>
                   <input
-                    type="date"
-                    value={editingTask.dueDate || ''}
-                    onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })}
+                    type="text"
+                    required
+                    value={editingTask.title || ''}
+                    onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
+                    placeholder="例：〇〇改善案の意見集約"
                   />
                 </div>
-                {editingTask.category === 'union_member' && (
+                <div className="form-group">
+                  <label>説明</label>
+                  <textarea
+                    rows={3}
+                    value={editingTask.description || ''}
+                    onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
+                    placeholder="詳細なメモを入力..."
+                  />
+                </div>
+                <div className="form-row">
                   <div className="form-group">
-                    <label>現在の回答率 (%)</label>
+                    <label>カテゴリ</label>
+                    <select
+                      value={editingTask.category || 'union_member'}
+                      onChange={e => setEditingTask({ ...editingTask, category: e.target.value as TaskCategory })}
+                    >
+                      <option value="union_member">🔴 組合員関連</option>
+                      <option value="administrative">🔵 事務タスク</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>優先度</label>
+                    <select
+                      value={editingTask.priority || 'medium'}
+                      onChange={e => setEditingTask({ ...editingTask, priority: e.target.value as Priority })}
+                    >
+                      <option value="high">高</option>
+                      <option value="medium">中</option>
+                      <option value="low">低</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>期限</label>
                     <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="10"
-                      value={editingTask.responseRate || 0}
-                      onChange={e => setEditingTask({ ...editingTask, responseRate: parseInt(e.target.value) })}
+                      type="date"
+                      value={editingTask.dueDate || ''}
+                      onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })}
                     />
                   </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="cancel-btn" onClick={() => setEditingTask(null)}>キャンセル</button>
-                <button type="submit" className="save-btn">保存する</button>
-              </div>
-            </form>
+                  {editingTask.category === 'union_member' && (
+                    <div className="form-group">
+                      <label>現在の回答率 (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="10"
+                        value={editingTask.responseRate || 0}
+                        onChange={e => setEditingTask({ ...editingTask, responseRate: parseInt(e.target.value) })}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="cancel-btn" onClick={() => setEditingTask(null)}>キャンセル</button>
+                  <button type="submit" className="save-btn">保存する</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        )}
+
+      {memoTaskId && (
+        <MemoEditor
+          memos={tasks.find(t => t.id === memoTaskId)?.memos || []}
+          onSave={(memos) => {
+            const newTasks = tasks.map(t => t.id === memoTaskId ? { ...t, memos } : t);
+            saveTasks(newTasks);
+          }}
+          onClose={() => setMemoTaskId(null)}
+        />
       )}
 
       <style>{`
@@ -600,6 +656,54 @@ const TaskList: React.FC = () => {
         .status-dot.active.in_progress { background-color: var(--warning); }
         .status-dot.active.completed { background-color: var(--success); }
 
+        /* Subtasks Area */
+        .subtasks-area {
+          background-color: rgba(255, 255, 255, 0.02);
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .subtask-header {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          text-transform: uppercase;
+        }
+        .subtasks-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+        }
+        .subtask-item {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          cursor: pointer;
+          font-size: 0.85rem;
+          padding: 2px 4px;
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+        .subtask-item:hover { background-color: rgba(255, 255, 255, 0.05); }
+        .subtask-item.completed { color: var(--text-muted); text-decoration: line-through; opacity: 0.7; }
+        .subtask-check {
+          width: 14px;
+          height: 14px;
+          border: 1px solid #475569;
+          border-radius: 3px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .subtask-check.checked {
+          background-color: var(--success);
+          border-color: var(--success);
+          color: white;
+        }
+        .subtask-title { flex: 1; }
+
         .response-rate-area {
           background-color: rgba(255, 255, 255, 0.03);
           padding: 1rem;
@@ -838,7 +942,7 @@ const TaskList: React.FC = () => {
           .form-row { grid-template-columns: 1fr; gap: 1rem; }
         }
       `}</style>
-    </div>
+    </div >
   );
 };
 

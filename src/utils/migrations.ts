@@ -3,7 +3,7 @@ import { AppState } from '../types';
 /**
  * 現在のデータ構造のバージョン
  */
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 4;
 
 /**
  * データを最新の構造に変換する
@@ -23,6 +23,14 @@ export const migrateData = (data: any): AppState => {
 
     if (version < 2) {
         migratedData = migrateToV2(migratedData);
+    }
+
+    if (version < 3) {
+        migratedData = migrateToV3(migratedData);
+    }
+
+    if (version < 4) {
+        migratedData = migrateToV4(migratedData);
     }
 
     // 最終的なバージョン情報を付与
@@ -100,5 +108,32 @@ const migrateToV2 = (data: any): any => {
         currentRoleId: data.currentRoleId || 'role-member',
         showAllItems: data.showAllItems !== undefined ? data.showAllItems : false,
         version: 2
+    };
+};
+
+const migrateToV3 = (data: any): any => {
+    return {
+        ...data,
+        travelExpenses: data.travelExpenses || [],
+        tasks: (data.tasks || []).map((t: any) => ({
+            ...t,
+            subtasks: t.subtasks || []
+        })),
+        events: (data.events || []).map((e: any) => ({
+            ...e,
+            memos: e.memos || []
+        })),
+        version: 3
+    };
+};
+
+const migrateToV4 = (data: any): any => {
+    return {
+        ...data,
+        tasks: (data.tasks || []).map((t: any) => ({
+            ...t,
+            memos: t.memos || []
+        })),
+        version: 4
     };
 };
