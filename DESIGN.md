@@ -30,6 +30,9 @@ classDiagram
         +string version
         +Task[] tasks
         +ScheduleEvent[] events
+        +TravelExpenseItem[] travelExpenses
+        +MemoItem[] memos
+        +MemoTemplate[] memoTemplates
         +Role[] roles
         +TaskDefinition[] taskDefinitions
         +MeetingDefinition[] meetingDefinitions
@@ -41,6 +44,8 @@ classDiagram
     class Storage {
         +getTasks()
         +saveTasks()
+        +getMemos()
+        +saveMemos()
         +syncWithCloud()
     }
     
@@ -72,10 +77,12 @@ classDiagram
 
 全てのデータは一つのJSONオブジェクトとして管理されます。
 
-- `version`: データ構造のバージョン（現在: 4）。
-- `tasks`: タスクの配列（役職に応じたフィルタリング、サブタスク、メモ機能対応）。
-- `events`: スケジュールの配列（会議体からのインポート、メモ機能対応）。
+- `version`: データ構造のバージョン（現在: 6）。
+- `tasks`: タスクの配列（役職に応じたフィルタリング、サブタスク対応。メモは外部参照）。
+- `events`: スケジュールの配列（会議体からのインポート対応。メモは外部参照）。
 - `travelExpenses`: 独立した旅費精算データの配列。
+- `memos`: グローバルに集約されたメモデータの配列（IDによる紐付け）。
+- `memoTemplates`: メモ作成時に利用する定型文テンプレートの配列。
 - `roles`: 役職定義の配列。
 - `taskDefinitions`: 定型タスク（テンプレート）の定義配列。
 - `meetingDefinitions`: 会議体（定例会議）の定義配列。

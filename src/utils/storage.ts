@@ -11,6 +11,7 @@ const KEYS = {
     EVENTS: 'union_app_events',
     TRAVEL_EXPENSES: 'union_app_travel_expenses',
     MEMOS: 'union_app_memos',
+    MEMO_TEMPLATES: 'union_app_memo_templates',
 };
 
 const SYNC_FILE_NAME = 'union_app_data.json';
@@ -56,6 +57,16 @@ export const storage = {
         storage.uploadToCloud();
     },
 
+    getMemoTemplates: (): any[] => {
+        const data = localStorage.getItem(KEYS.MEMO_TEMPLATES);
+        return data ? JSON.parse(data) : [];
+    },
+
+    saveMemoTemplates: (templates: any[]): void => {
+        localStorage.setItem(KEYS.MEMO_TEMPLATES, JSON.stringify(templates));
+        storage.uploadToCloud();
+    },
+
     /**
      * クラウドストレージ上の最新データで同期
      */
@@ -72,6 +83,7 @@ export const storage = {
             storage.saveEvents(cloudData.events);
             if (cloudData.travelExpenses) storage.saveTravelExpenses(cloudData.travelExpenses);
             if (cloudData.memos) storage.saveMemos(cloudData.memos);
+            if (cloudData.memoTemplates) storage.saveMemoTemplates(cloudData.memoTemplates);
             // 他の設定データもlocalStorageにキャッシュ（必要に応じて）
             if (cloudData.roles) localStorage.setItem('union_app_roles', JSON.stringify(cloudData.roles));
             if (cloudData.taskDefinitions) localStorage.setItem('union_app_task_defs', JSON.stringify(cloudData.taskDefinitions));
@@ -117,6 +129,7 @@ export const storage = {
             meetingDefinitions: storage.getMeetingDefinitions(),
             travelExpenses: storage.getTravelExpenses(),
             memos: storage.getMemos(),
+            memoTemplates: storage.getMemoTemplates(),
             currentRoleId: storage.getCurrentRoleId(),
             showAllItems: storage.getShowAllItems(),
             lastSyncedAt: new Date().toISOString()

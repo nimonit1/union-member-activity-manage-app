@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { MemoItem, MemoType } from '../types';
+import { MemoItem, MemoType, MemoTemplate } from '../types';
 import { Type, Edit3, Mic, Save, Trash2, X, Play, Square } from 'lucide-react';
 import { db } from '../utils/db';
+import { storage } from '../utils/storage';
 
 interface MemoEditorProps {
     memos: MemoItem[];
@@ -12,14 +13,12 @@ interface MemoEditorProps {
 const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
     const [editingMemo, setEditingMemo] = useState<Partial<MemoItem> | null>(null);
 
-    // 手書き用
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-
     // 音声用
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+
+    const [templates] = useState(() => storage.getMemoTemplates());
 
     const startNewMemo = (type: MemoType) => {
         const newItem: Partial<MemoItem> = {
@@ -34,14 +33,18 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
     const handleSaveMemo = async () => {
         if (!editingMemo) return;
 
-        let content = editingMemo.content || '';
+        const finalMemo = {
+            ...editingMemo,
+            createdAt: editingMemo.createdAt || new Date().toISOString()
+        } as MemoItem;
 
-        if (editingMemo.type === 'handwriting' && canvasRef.current) {
-            content = canvasRef.current.toDataURL();
+        // 既存のメモを更新するか新しいメモを追加するか判断
+        const exists = memos.some(m => m.id === finalMemo.id);
+        if (exists) {
+            onSave(memos.map(m => m.id === finalMemo.id ? finalMemo : m));
+        } else {
+            onSave([...memos, finalMemo]);
         }
-
-        const finalMemo = { ...editingMemo, content } as MemoItem;
-        onSave([...memos, finalMemo]);
         setEditingMemo(null);
     };
 
@@ -51,41 +54,8 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
         }
     };
 
-    // 手書きロジック
-    const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-        setIsDrawing(true);
-        draw(e);
-    };
-
-    const stopDrawing = () => {
-        setIsDrawing(false);
-        const ctx = canvasRef.current?.getContext('2d');
-        ctx?.beginPath();
-    };
-
-    const draw = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!isDrawing || !canvasRef.current) return;
-        const ctx = canvasRef.current.getContext('2d');
-        if (!ctx) return;
-
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#ffffff';
-
-        const rect = canvasRef.current.getBoundingClientRect();
-        let x, y;
-        if ('touches' in e) {
-            x = e.touches[0].clientX - rect.left;
-            y = e.touches[0].clientY - rect.top;
-        } else {
-            x = e.clientX - rect.left;
-            y = e.clientY - rect.top;
-        }
-
-        ctx.lineTo(x, y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x, y);
+    const applyTemplate = (content: string) => {
+        setEditingMemo(prev => prev ? { ...prev, content: (prev.content || '') + content } : null);
     };
 
     // 音声ロジック
@@ -130,7 +100,6 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
 
                 <div className="memo-types-bar">
                     <button onClick={() => startNewMemo('text')} title="テキスト"><Type size={18} /></button>
-                    <button onClick={() => startNewMemo('handwriting')} title="手書き"><Edit3 size={18} /></button>
                     <button onClick={() => startNewMemo('voice')} title="音声"><Mic size={18} /></button>
                 </div>
 
@@ -147,9 +116,13 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
                                     <span className="memo-date">{new Date(memo.createdAt).toLocaleString()}</span>
                                     <button className="del-btn-tiny" onClick={() => handleDeleteMemo(memo.id)}><Trash2 size={12} /></button>
                                 </div>
-                                <div className="memo-body">
-                                    {memo.type === 'text' && <p>{memo.content}</p>}
-                                    {memo.type === 'handwriting' && <img src={memo.content} alt="handwriting" className="memo-hw-img" />}
+                                <div className="memo-body" onClick={() => memo.type === 'text' && setEditingMemo(memo)}>
+                                    {memo.type === 'text' && (
+                                        <div className="text-content">
+                                            <p>{memo.content}</p>
+                                            <div className="edit-hint"><Edit3 size={10} /> タップして編集</div>
+                                        </div>
+                                    )}
                                     {memo.type === 'voice' && <button className="voice-play-btn"><Play size={14} /> 音声を再生</button>}
                                 </div>
                             </div>
@@ -166,32 +139,26 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
                         </div>
                         <div className="edit-body">
                             {editingMemo.type === 'text' && (
-                                <textarea
-                                    autoFocus
-                                    value={editingMemo.content}
-                                    onChange={e => setEditingMemo({ ...editingMemo, content: e.target.value })}
-                                    placeholder="ここにメモを入力..."
-                                />
-                            )}
-                            {editingMemo.type === 'handwriting' && (
-                                <div className="canvas-wrapper">
-                                    <canvas
-                                        ref={canvasRef}
-                                        width={400}
-                                        height={300}
-                                        onMouseDown={startDrawing}
-                                        onMouseMove={draw}
-                                        onMouseUp={stopDrawing}
-                                        onMouseLeave={stopDrawing}
-                                        onTouchStart={startDrawing}
-                                        onTouchMove={draw}
-                                        onTouchEnd={stopDrawing}
+                                <>
+                                    {templates && templates.length > 0 && (
+                                        <div className="template-selector">
+                                            <span className="label">テンプレート:</span>
+                                            <div className="template-list">
+                                                {templates.map((tpl: MemoTemplate) => (
+                                                    <button key={tpl.id} onClick={() => applyTemplate(tpl.content)} className="tpl-btn">
+                                                        {tpl.title}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <textarea
+                                        autoFocus
+                                        value={editingMemo.content}
+                                        onChange={e => setEditingMemo({ ...editingMemo, content: e.target.value })}
+                                        placeholder="ここにメモを入力..."
                                     />
-                                    <button className="clear-btn" onClick={() => {
-                                        const ctx = canvasRef.current?.getContext('2d');
-                                        ctx?.clearRect(0, 0, 400, 300);
-                                    }}>クリア</button>
-                                </div>
+                                </>
                             )}
                             {editingMemo.type === 'voice' && (
                                 <div className="voice-area">
@@ -228,13 +195,20 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose }) => {
                 
                 .memos-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
                 .memo-item-card { background: rgba(255,255,255,0.03); border: 1px solid #334155; border-radius: 8px; padding: 0.75rem; }
+                .memo-body { cursor: pointer; }
+                .text-content { position: relative; }
+                .edit-hint { position: absolute; bottom: -1rem; right: 0; font-size: 0.6rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
+                .memo-body:hover .edit-hint { opacity: 1; }
                 .memo-meta { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.7rem; color: var(--text-muted); }
-                .memo-hw-img { max-width: 100%; border-radius: 4px; background: #000; }
                 
-                .edit-area { position: absolute; bottom: 0; left: 0; right: 0; background: #0f172a; border-top: 2px solid var(--primary); border-radius: 12px 12px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; z-index: 2100; }
+                .edit-area { position: absolute; bottom: 0; left: 0; right: 0; background: #0f172a; border-top: 2px solid var(--primary); border-radius: 12px 12px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; z-index: 2100; max-height: 80%; overflow-y: auto; }
+                .template-selector { margin-bottom: 0.5rem; }
+                .template-selector .label { font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem; }
+                .template-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+                .tpl-btn { background: #334155; border: 1px solid #475569; color: var(--text-main); font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+                .tpl-btn:hover { background-color: var(--primary); border-color: var(--primary); }
                 .edit-body textarea { width: 100%; height: 120px; background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 0.5rem; }
-                .canvas-wrapper { background: black; border-radius: 8px; position: relative; }
-                canvas { width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+                
                 .voice-area { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem 0; }
                 
                 .pulse { animation: pulse-red 1.5s infinite; }

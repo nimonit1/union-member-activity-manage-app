@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { ScheduleEvent, EventCategory, Task, MeetingDefinition } from '../types';
+import { ScheduleEvent, Task, MeetingDefinition } from '../types';
 import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3 } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
@@ -20,6 +20,8 @@ const CalendarPage: React.FC = () => {
     const [memoEventId, setMemoEventId] = useState<string | null>(null);
     const [travelExpenses, setTravelExpenses] = useState<TravelExpenseItem[]>([]);
     const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
+    const [activeTab, setActiveTab] = useState<'schedule' | 'travel'>('schedule');
+    const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
 
     useEffect(() => {
         setEvents(storage.getEvents());
@@ -159,7 +161,21 @@ const CalendarPage: React.FC = () => {
             const newExpenses = travelExpenses.filter(te => te.id !== id);
             setTravelExpenses(newExpenses);
             storage.saveTravelExpenses(newExpenses);
+            if (editingExpenseId === id) setEditingExpenseId(null);
         }
+    };
+
+    const handleUpdateTravelExpense = (id: string, routes: any[]) => {
+        const totalAmount = routes.reduce((sum, r) => sum + (r.amount * (r.isRoundTrip ? 2 : 1)), 0);
+        const newExpenses = travelExpenses.map(te => te.id === id ? { ...te, routes, totalAmount } : te);
+        setTravelExpenses(newExpenses);
+        storage.saveTravelExpenses(newExpenses);
+    };
+
+    const handleUpdateTravelTitle = (id: string, title: string) => {
+        const newExpenses = travelExpenses.map(te => te.id === id ? { ...te, title } : te);
+        setTravelExpenses(newExpenses);
+        storage.saveTravelExpenses(newExpenses);
     };
 
     return (
@@ -222,138 +238,193 @@ const CalendarPage: React.FC = () => {
                 <div className="calendar-side">
                     {selectedDate ? (
                         <div className="detail-panel">
-                            <div className="section-header">
-                                <h3>{selectedDate} の旅費精算</h3>
-                                <button className="small-primary-btn" onClick={handleAddTravelExpense}><Wallet size={16} /> 旅費を追加</button>
+                            <div className="detail-tabs">
+                                <button
+                                    className={`detail-tab-btn ${activeTab === 'schedule' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('schedule')}
+                                >
+                                    予定・タスク
+                                </button>
+                                <button
+                                    className={`detail-tab-btn ${activeTab === 'travel' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('travel')}
+                                >
+                                    旅費精算
+                                </button>
                             </div>
 
-                            <div className="daily-travel-list">
-                                {travelExpenses.filter(te => te.date === selectedDate).map(te => (
-                                    <div key={te.id} className="travel-item-card">
-                                        <div className="travel-header">
-                                            <strong>{te.title || '移動'}</strong>
-                                            <span className="total">¥{(te.totalAmount || 0).toLocaleString()}</span>
-                                            <button className="del-btn-tiny" onClick={() => handleDeleteTravelExpense(te.id)}><Trash2 size={12} /></button>
-                                        </div>
-                                        <div className="travel-routes">
-                                            {te.routes.map((r, idx) => (
-                                                <div key={idx} className="route-tag">{r.from} → {r.to}</div>
-                                            ))}
-                                            {te.routes.length === 0 && <span className="empty-route">経路未登録</span>}
-                                        </div>
+                            {activeTab === 'travel' ? (
+                                <div className="travel-tab-content">
+                                    <div className="section-header">
+                                        <h3>{selectedDate} の旅費一覧</h3>
+                                        <button className="small-primary-btn" onClick={handleAddTravelExpense}>
+                                            <Plus size={16} /> 追加
+                                        </button>
                                     </div>
-                                ))}
-                                {travelExpenses.filter(te => te.date === selectedDate).length === 0 && (
-                                    <p className="empty-hint">この日の旅費データはありません。</p>
-                                )}
-                            </div>
-
-                            <div className="section-header">
-                                <h3>{selectedDate} の予定・タスク</h3>
-                                <div className="add-actions">
-                                    <button className="small-primary-btn" onClick={() => setShowMtgModal(true)}><Shield size={16} /> 会議体</button>
-                                    <button className="small-primary-btn" onClick={handleAddEvent}><Plus size={16} /> 追加</button>
-                                </div>
-                            </div>
-
-                            <div className="event-list">
-                                {getFilteredEvents(selectedDate).map(event => (
-                                    <div key={event.id} className="event-item-container">
-                                        {editingEventId === event.id ? (
-                                            <div className="event-edit-form">
-                                                <input
-                                                    className="edit-title"
-                                                    value={editFormData.title || ''}
-                                                    onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
-                                                    placeholder="予定タイトル"
-                                                />
-                                                <div className="edit-row">
-                                                    <Clock size={16} />
-                                                    <input type="time" value={editFormData.startTime || ''} onChange={e => setEditFormData({ ...editFormData, startTime: e.target.value })} />
-                                                    <span>〜</span>
-                                                    <input type="time" value={editFormData.endTime || ''} onChange={e => setEditFormData({ ...editFormData, endTime: e.target.value })} />
-                                                </div>
-                                                <div className="edit-row">
-                                                    <MapPin size={16} />
-                                                    <input className="edit-loc" value={editFormData.location || ''} onChange={e => setEditFormData({ ...editFormData, location: e.target.value })} placeholder="場所" />
-                                                </div>
-                                                <select
-                                                    className="edit-cat"
-                                                    value={editFormData.category || 'other'}
-                                                    onChange={e => setEditFormData({ ...editFormData, category: e.target.value as EventCategory })}
-                                                >
-                                                    <option value="meeting">打ち合わせ</option>
-                                                    <option value="negotiation">交渉</option>
-                                                    <option value="business_trip">出張</option>
-                                                    <option value="conference">会議</option>
-                                                    <option value="training">研修</option>
-                                                    <option value="other">その他</option>
-                                                </select>
-
-                                                <TravelExpenseForm
-                                                    routes={editFormData.expense?.routes || []}
-                                                    onChange={routes => setEditFormData({ ...editFormData, expense: { routes, totalAmount: 0 } })}
-                                                />
-
-                                                <div className="edit-actions">
-                                                    <button className="save-btn" onClick={handleSaveEdit}><Save size={16} /> 保存</button>
-                                                    <button className="delete-btn-action" onClick={() => handleDeleteEvent(event.id)}><Trash2 size={16} /> 削除</button>
-                                                    <button className="cancel-btn" onClick={() => setEditingEventId(null)}><X size={16} /> キャンセル</button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="event-display-card" onClick={() => handleStartEdit(event)}>
-                                                <div className="ev-header">
-                                                    <span className={`ev-cat-tag ${event.category}`}>{event.category}</span>
-                                                    <span className="ev-time">{event.startTime || ''}</span>
-                                                </div>
-                                                <h4 className="ev-title">{event.title}</h4>
-                                                {event.location && <div className="ev-loc"><MapPin size={12} /> {event.location}</div>}
-                                                {event.expense && event.expense.totalAmount > 0 && (
-                                                    <div className="ev-expense">
-                                                        <Wallet size={12} />
-                                                        <span>旅費: ¥{event.expense.totalAmount.toLocaleString()}</span>
+                                    <div className="daily-travel-list">
+                                        {travelExpenses.filter(te => te.date === selectedDate).map(te => (
+                                            <div key={te.id} className={`travel-item-card ${editingExpenseId === te.id ? 'editing' : ''}`}>
+                                                {editingExpenseId === te.id ? (
+                                                    <div className="travel-edit-mode">
+                                                        <div className="edit-header">
+                                                            <input
+                                                                type="text"
+                                                                value={te.title}
+                                                                onChange={(e) => handleUpdateTravelTitle(te.id, e.target.value)}
+                                                                placeholder="移動の目的など"
+                                                                className="travel-title-input"
+                                                                autoFocus
+                                                            />
+                                                            <button className="done-btn" onClick={() => setEditingExpenseId(null)}>
+                                                                <Save size={16} /> 完了
+                                                            </button>
+                                                        </div>
+                                                        <TravelExpenseForm
+                                                            routes={te.routes}
+                                                            onChange={(routes) => handleUpdateTravelExpense(te.id, routes)}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="travel-display-mode" onClick={() => setEditingExpenseId(te.id)}>
+                                                        <div className="travel-header">
+                                                            <strong>{te.title || '（無題の移動）'}</strong>
+                                                            <span className="total">¥{(te.totalAmount || 0).toLocaleString()}</span>
+                                                            <button
+                                                                className="del-btn-tiny"
+                                                                onClick={(e) => { e.stopPropagation(); handleDeleteTravelExpense(te.id); }}
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                        <div className="travel-routes">
+                                                            {te.routes.map((r, idx) => (
+                                                                <div key={idx} className="route-tag">{r.from} → {r.to}</div>
+                                                            ))}
+                                                            {te.routes.length === 0 && <span className="empty-route">タップして経路を追加</span>}
+                                                        </div>
                                                     </div>
                                                 )}
-                                                <div className="ev-memos-row">
-                                                    <button
-                                                        className="memo-btn-tiny"
-                                                        onClick={(e) => { e.stopPropagation(); setMemoEventId(event.id); }}
-                                                    >
-                                                        <Edit3 size={12} />
-                                                        メモ ({globalMemos.filter(m => m.linkedEventId === event.id).length})
-                                                    </button>
-                                                </div>
-                                                <div className="ev-hover-hint">タップで編集</div>
                                             </div>
+                                        ))}
+                                        {travelExpenses.filter(te => te.date === selectedDate).length === 0 && (
+                                            <p className="empty-hint">この日の旅費データはありません。</p>
                                         )}
                                     </div>
-                                ))}
-
-                                {tasks.filter(t => t.dueDate === selectedDate).map(task => (
-                                    <div key={task.id} className={`task-display-card ${task.status}`}>
-                                        <div className="ev-header">
-                                            <span className="task-badge">{task.category === 'union_member' ? '🔴 組合員対応' : '🔵 事務タスク'}</span>
-                                            <span className="task-status-tag">{task.status === 'completed' ? '完了' : '期限日'}</span>
-                                        </div>
-                                        <h4 className="ev-title">【タスク】{task.title}</h4>
-                                        <div className="ev-loc">{task.description}</div>
-                                        <div className="ev-memos-row">
-                                            <button className="memo-btn-tiny" onClick={() => setMemoEventId(task.id)}>
-                                                <Edit3 size={12} />
-                                                メモ ({globalMemos.filter(m => m.linkedTaskId === task.id).length})
+                                </div>
+                            ) : (
+                                <div className="schedule-tab-content">
+                                    <div className="section-header">
+                                        <h3>{selectedDate} の予定・タスク</h3>
+                                        <div className="add-actions">
+                                            <button className="small-primary-btn" onClick={() => setShowMtgModal(true)}>
+                                                <Shield size={16} /> 会議体
+                                            </button>
+                                            <button className="small-primary-btn" onClick={handleAddEvent}>
+                                                <Plus size={16} /> 追加
                                             </button>
                                         </div>
-                                        {task.responseRate !== undefined && (
-                                            <div className="task-rate">回答率: {task.responseRate}%</div>
+                                    </div>
+
+                                    <div className="event-list">
+                                        {getFilteredEvents(selectedDate).map(event => (
+                                            <div key={event.id} className="event-item-container">
+                                                {editingEventId === event.id ? (
+                                                    <div className="event-edit-form">
+                                                        <input
+                                                            className="edit-title"
+                                                            value={editFormData.title || ''}
+                                                            onChange={e => setEditFormData({ ...editFormData, title: e.target.value })}
+                                                            placeholder="予定タイトル"
+                                                        />
+                                                        <div className="edit-row">
+                                                            <Clock size={16} />
+                                                            <input type="time" value={editFormData.startTime || ''} onChange={e => setEditFormData({ ...editFormData, startTime: e.target.value })} />
+                                                            <span>〜</span>
+                                                            <input type="time" value={editFormData.endTime || ''} onChange={e => setEditFormData({ ...editFormData, endTime: e.target.value })} />
+                                                        </div>
+                                                        <div className="edit-row">
+                                                            <MapPin size={16} />
+                                                            <input className="edit-loc" value={editFormData.location || ''} onChange={e => setEditFormData({ ...editFormData, location: e.target.value })} placeholder="場所" />
+                                                        </div>
+                                                        <select
+                                                            className="edit-cat"
+                                                            value={editFormData.category || 'other'}
+                                                            onChange={e => setEditFormData({ ...editFormData, category: e.target.value as any })}
+                                                        >
+                                                            <option value="meeting">打ち合わせ</option>
+                                                            <option value="negotiation">交渉</option>
+                                                            <option value="business_trip">出張</option>
+                                                            <option value="conference">会議</option>
+                                                            <option value="training">研修</option>
+                                                            <option value="other">その他</option>
+                                                        </select>
+
+                                                        <TravelExpenseForm
+                                                            routes={editFormData.expense?.routes || []}
+                                                            onChange={routes => setEditFormData({ ...editFormData, expense: { routes, totalAmount: 0 } })}
+                                                        />
+
+                                                        <div className="edit-actions">
+                                                            <button className="save-btn" onClick={handleSaveEdit}><Save size={16} /> 保存</button>
+                                                            <button className="delete-btn-action" onClick={() => handleDeleteEvent(event.id)}><Trash2 size={16} /> 削除</button>
+                                                            <button className="cancel-btn" onClick={() => setEditingEventId(null)}><X size={16} /> キャンセル</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="event-display-card" onClick={() => handleStartEdit(event)}>
+                                                        <div className="ev-header">
+                                                            <span className={`ev-cat-tag ${event.category}`}>{event.category}</span>
+                                                            <span className="ev-time">{event.startTime || ''}</span>
+                                                        </div>
+                                                        <h4 className="ev-title">{event.title}</h4>
+                                                        {event.location && <div className="ev-loc"><MapPin size={12} /> {event.location}</div>}
+                                                        {event.expense && event.expense.totalAmount > 0 && (
+                                                            <div className="ev-expense">
+                                                                <Wallet size={12} />
+                                                                <span>旅費: ¥{event.expense.totalAmount.toLocaleString()}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="ev-memos-row">
+                                                            <button
+                                                                className="memo-btn-tiny"
+                                                                onClick={(e) => { e.stopPropagation(); setMemoEventId(event.id); }}
+                                                            >
+                                                                <Edit3 size={12} />
+                                                                メモ ({globalMemos.filter(m => m.linkedEventId === event.id).length})
+                                                            </button>
+                                                        </div>
+                                                        <div className="ev-hover-hint">タップで編集</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {tasks.filter(t => t.dueDate === selectedDate).map(task => (
+                                            <div key={task.id} className={`task-display-card ${task.status}`}>
+                                                <div className="ev-header">
+                                                    <span className="task-badge">{task.category === 'union_member' ? '🔴 組合員対応' : '🔵 事務タスク'}</span>
+                                                    <span className="task-status-tag">{task.status === 'completed' ? '完了' : '期限日'}</span>
+                                                </div>
+                                                <h4 className="ev-title">【タスク】{task.title}</h4>
+                                                <div className="ev-loc">{task.description}</div>
+                                                <div className="ev-memos-row">
+                                                    <button className="memo-btn-tiny" onClick={() => setMemoEventId(task.id)}>
+                                                        <Edit3 size={12} />
+                                                        メモ ({globalMemos.filter(m => m.linkedTaskId === task.id).length})
+                                                    </button>
+                                                </div>
+                                                {task.responseRate !== undefined && (
+                                                    <div className="task-rate">回答率: {task.responseRate}%</div>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {getFilteredEvents(selectedDate).length === 0 && tasks.filter(t => t.dueDate === selectedDate).length === 0 && (
+                                            <div className="empty-state">この日の予定・タスクはありません。</div>
                                         )}
                                     </div>
-                                ))}
-
-                                {getFilteredEvents(selectedDate).length === 0 && tasks.filter(t => t.dueDate === selectedDate).length === 0 && (
-                                    <div className="empty-state">この日の予定・タスクはありません。</div>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="empty-state-panel">日付を選択してください。</div>
@@ -425,8 +496,13 @@ const CalendarPage: React.FC = () => {
         .event-dot.other { background-color: var(--text-muted); }
         .task-dot { width: 8px; height: 8px; border-radius: 2px; background-color: #10b981; }
 
-        .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1.5rem; height: fit-content; position: sticky; top: 1.5rem; }
-        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
+        .detail-tabs { display: flex; border-bottom: 1px solid #334155; background-color: #1e293b; }
+        .detail-tab-btn { flex: 1; padding: 1rem; border: none; background: none; color: var(--text-muted); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; }
+        .detail-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
+        .schedule-tab-content, .travel-tab-content { padding: 1.5rem; }
+        
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         .add-actions { display: flex; gap: 0.5rem; }
         .event-list { display: flex; flex-direction: column; gap: 1rem; }
         .ev-memo { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; border-top: 1px solid #334155; padding-top: 0.5rem; font-style: italic; }
@@ -455,7 +531,23 @@ const CalendarPage: React.FC = () => {
         .ev-hover-hint { position: absolute; bottom: 0.5rem; right: 0.5rem; font-size: 0.65rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
         .event-display-card:hover .ev-hover-hint { opacity: 1; }
 
-        .task-display-card { background-color: rgba(16, 185, 129, 0.05); border: 1px dashed #10b981; border-radius: 10px; padding: 1rem; position: relative; }
+        .travel-item-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid #334155; border-radius: 10px; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
+        .travel-item-card:hover:not(.editing) { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
+        .travel-item-card.editing { border-color: var(--primary); background-color: #0f172a; padding: 1rem; cursor: default; }
+        .travel-display-mode { padding: 1rem; }
+        .travel-edit-mode { display: flex; flex-direction: column; gap: 1rem; }
+        .edit-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+        .travel-title-input { background: none; border: none; color: white; font-size: 1rem; font-weight: 700; flex: 1; outline: none; }
+        .done-btn { background-color: var(--primary); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+        
+        .travel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .travel-header strong { font-size: 0.9rem; color: #ffffff; }
+        .travel-header .total { color: var(--success); font-weight: 700; font-size: 0.9rem; }
+        .travel-routes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .route-tag { font-size: 0.7rem; background-color: #334155; color: var(--text-muted); padding: 2px 8px; border-radius: 4px; }
+        .empty-route { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+        .del-btn-tiny { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
+        .del-btn-tiny:hover { color: var(--danger); background-color: rgba(239, 68, 68, 0.1); }
         .task-display-card.completed { opacity: 0.5; filter: grayscale(1); border-style: solid; }
         .task-badge { font-size: 0.65rem; color: #10b981; font-weight: 700; }
         .task-status-tag { font-size: 0.65rem; color: var(--text-muted); }

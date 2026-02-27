@@ -3,7 +3,7 @@ import { AppState } from '../types';
 /**
  * 現在のデータ構造のバージョン
  */
-export const CURRENT_VERSION = 5;
+export const CURRENT_VERSION = 6;
 
 /**
  * データを最新の構造に変換する
@@ -35,6 +35,10 @@ export const migrateData = (data: any): AppState => {
 
     if (version < 5) {
         migratedData = migrateToV5(migratedData);
+    }
+
+    if (version < 6) {
+        migratedData = migrateToV6(migratedData);
     }
 
     // 最終的なバージョン情報を付与
@@ -172,5 +176,19 @@ const migrateToV5 = (data: any): any => {
         ...data,
         version: 5,
         memos: globalMemos
+    };
+};
+
+const migrateToV6 = (data: any): any => {
+    const defaultTemplates = [
+        { id: 'tpl-meeting', title: '会議議事録', content: '【日時】\n【場所】\n【出席者】\n【決定事項】\n' },
+        { id: 'tpl-todo', title: 'TODOリスト', content: '・[ ] \n・[ ] \n・[ ] ' },
+        { id: 'tpl-note', title: '汎用メモ', content: '■概要：\n■詳細：\n' }
+    ];
+
+    return {
+        ...data,
+        version: 6,
+        memoTemplates: data.memoTemplates || defaultTemplates
     };
 };

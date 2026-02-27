@@ -108,6 +108,12 @@ export interface MeetingDefinition {
     roleIds: string[]; // 紐付ける役職IDの配列
 }
 
+export interface MemoTemplate {
+    id: string;
+    title: string;
+    content: string;
+}
+
 export interface AppState {
     version: number;
     tasks: Task[];
@@ -119,5 +125,6 @@ export interface AppState {
     currentRoleId: string;
     travelExpenses?: TravelExpenseItem[];
     memos: MemoItem[];
+    memoTemplates?: MemoTemplate[];
     lastSyncedAt?: string;
 }

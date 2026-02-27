@@ -11,6 +11,7 @@ const MemoList: React.FC = () => {
     const [showEditor, setShowEditor] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [linkingMemoId, setLinkingMemoId] = useState<string | null>(null);
+    const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
 
     useEffect(() => {
         setMemos(storage.getMemos());
@@ -80,17 +81,20 @@ const MemoList: React.FC = () => {
                         <div className="memo-card-header">
                             <span className="memo-type">
                                 {memo.type === 'text' && <Type size={14} />}
-                                {memo.type === 'handwriting' && <Edit3 size={14} />}
                                 {memo.type === 'voice' && <Mic size={14} />}
-                                {memo.type === 'text' ? 'テキスト' : memo.type === 'handwriting' ? '手書き' : '音声'}
+                                {memo.type === 'text' ? 'テキスト' : '音声'}
                             </span>
                             <span className="memo-date">{new Date(memo.createdAt).toLocaleDateString()}</span>
                             <button className="delete-btn" onClick={() => handleDelete(memo.id)}><Trash2 size={14} /></button>
                         </div>
-                        <div className="memo-card-body">
-                            {memo.type === 'text' && <p>{memo.content}</p>}
-                            {memo.type === 'handwriting' && <img src={memo.content} alt="handwriting" />}
-                            {memo.type === 'voice' && <div className="voice-placeholder">音声メモ</div>}
+                        <div className="memo-card-body" onClick={() => memo.type === 'text' && setEditingMemoId(memo.id)}>
+                            {memo.type === 'text' && (
+                                <div className="text-body">
+                                    <p>{memo.content}</p>
+                                    <div className="edit-hint"><Edit3 size={10} /> タップして編集</div>
+                                </div>
+                            )}
+                            {memo.type === 'voice' && <div className="voice-placeholder">音声メモ (再生可能)</div>}
                         </div>
                         <div className="memo-card-footer">
                             <div className="link-status">
@@ -110,11 +114,18 @@ const MemoList: React.FC = () => {
                 ))}
             </div>
 
-            {showEditor && (
+            {(showEditor || editingMemoId) && (
                 <MemoEditor
                     memos={memos}
-                    onSave={saveMemos}
-                    onClose={() => setShowEditor(false)}
+                    onSave={(newMemos) => {
+                        saveMemos(newMemos);
+                        setEditingMemoId(null);
+                        setShowEditor(false);
+                    }}
+                    onClose={() => {
+                        setEditingMemoId(null);
+                        setShowEditor(false);
+                    }}
                 />
             )}
 
@@ -150,9 +161,11 @@ const MemoList: React.FC = () => {
                 .memo-card { background: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
                 .memo-card-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted); }
                 .memo-type { display: flex; align-items: center; gap: 0.4rem; }
-                .memo-card-body { flex: 1; overflow: hidden; }
-                .memo-card-body p { margin: 0; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-                .memo-card-body img { width: 100%; border-radius: 4px; background: #000; }
+                .memo-card-body { flex: 1; overflow: hidden; cursor: pointer; }
+                .text-body { position: relative; }
+                .edit-hint { position: absolute; bottom: -1rem; right: 0; font-size: 0.6rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
+                .memo-card-body:hover .edit-hint { opacity: 1; }
+                .memo-card-body p { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
                 
                 .linked-badge { background: rgba(59,130,246,0.1); color: var(--primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; display: flex; align-items: center; gap: 0.4rem; }
                 .link-btn { background: none; border: 1px dashed #334155; color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; width: 100%; }
