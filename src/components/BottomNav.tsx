@@ -1,13 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings as SettingsIcon, Wallet } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings as SettingsIcon, Wallet, StickyNote } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
     const menuItems = [
         { name: 'ダッシュ', path: '/', icon: <LayoutDashboard size={20} /> },
         { name: 'タスク', path: '/tasks', icon: <CheckSquare size={20} /> },
         { name: '予定', path: '/calendar', icon: <CalendarIcon size={20} /> },
-        { name: '旅費', path: '/travel', icon: <Wallet size={20} /> },
+        { name: 'メモ', path: '/memos', icon: <StickyNote size={20} /> },
         { name: '設定', path: '/settings', icon: <SettingsIcon size={20} /> },
     ];
 

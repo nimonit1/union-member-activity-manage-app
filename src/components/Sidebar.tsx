@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, User, Wallet } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, User, Wallet, StickyNote } from 'lucide-react';
 import SyncStatus from './SyncStatus';
 
 const Sidebar: React.FC = () => {
@@ -8,7 +8,7 @@ const Sidebar: React.FC = () => {
     { name: 'ダッシュボード', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'タスク管理', path: '/tasks', icon: <CheckSquare size={20} /> },
     { name: 'スケジュール', path: '/calendar', icon: <CalendarIcon size={20} /> },
-    { name: '旅費精算', path: '/travel', icon: <Wallet size={20} /> },
+    { name: 'メモ一覧', path: '/memos', icon: <StickyNote size={20} /> },
   ];
 
   return (

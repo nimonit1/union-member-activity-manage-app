@@ -3,7 +3,7 @@ import { AppState } from '../types';
 /**
  * 現在のデータ構造のバージョン
  */
-export const CURRENT_VERSION = 4;
+export const CURRENT_VERSION = 5;
 
 /**
  * データを最新の構造に変換する
@@ -31,6 +31,10 @@ export const migrateData = (data: any): AppState => {
 
     if (version < 4) {
         migratedData = migrateToV4(migratedData);
+    }
+
+    if (version < 5) {
+        migratedData = migrateToV5(migratedData);
     }
 
     // 最終的なバージョン情報を付与
@@ -135,5 +139,38 @@ const migrateToV4 = (data: any): any => {
             memos: t.memos || []
         })),
         version: 4
+    };
+};
+const migrateToV5 = (data: any): any => {
+    const globalMemos: any[] = [];
+
+    // Tasks からメモを抽出
+    if (data.tasks) {
+        data.tasks.forEach((task: any) => {
+            if (task.memos) {
+                task.memos.forEach((memo: any) => {
+                    globalMemos.push({ ...memo, linkedTaskId: task.id });
+                });
+                delete task.memos;
+            }
+        });
+    }
+
+    // Events からメモを抽出
+    if (data.events) {
+        data.events.forEach((event: any) => {
+            if (event.memos) {
+                event.memos.forEach((memo: any) => {
+                    globalMemos.push({ ...memo, linkedEventId: event.id });
+                });
+                delete event.memos;
+            }
+        });
+    }
+
+    return {
+        ...data,
+        version: 5,
+        memos: globalMemos
     };
 };

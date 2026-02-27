@@ -26,7 +26,6 @@ export interface Task {
     responseRate?: number; // 0 to 100, 組合員関連タスクのみ
     createdAt: string;
     subtasks?: Subtask[];
-    memos?: MemoItem[];
 }
 
 export type EventCategory = 'meeting' | 'business_trip' | 'negotiation' | 'conference' | 'training' | 'other';
@@ -54,6 +53,8 @@ export interface MemoItem {
     type: MemoType;
     content: string; // textなら文字列、handwritingならJSON文字列、voiceならIndexedDBのID
     createdAt: string;
+    linkedEventId?: string; // スケジュールへの紐付け
+    linkedTaskId?: string;  // タスクへの紐付け
 }
 
 export interface ScheduleEvent {
@@ -67,7 +68,6 @@ export interface ScheduleEvent {
     memo?: string; // 互換性のための既存フィールド
     expense?: TravelExpense; // 互換性のための既存フィールド
     expenseId?: string; // 独立した旅費との紐付け用
-    memos?: MemoItem[];
 }
 
 export interface TravelExpenseItem extends TravelExpense {
@@ -113,10 +113,11 @@ export interface AppState {
     tasks: Task[];
     events: ScheduleEvent[];
     roles?: Role[];
-    taskDefinitions?: TaskDefinition[];
-    meetingDefinitions?: MeetingDefinition[];
+    taskDefinitions: TaskDefinition[];
+    meetingDefinitions: MeetingDefinition[];
+    showAllItems: boolean;
+    currentRoleId: string;
     travelExpenses?: TravelExpenseItem[];
-    currentRoleId?: string;
-    showAllItems?: boolean;
+    memos: MemoItem[];
     lastSyncedAt?: string;
 }

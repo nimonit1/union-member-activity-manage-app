@@ -4,7 +4,7 @@ import { ScheduleEvent, EventCategory, Task, MeetingDefinition } from '../types'
 import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3 } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
-import { MemoItem } from '../types';
+import { MemoItem, TravelExpenseItem, TravelRoute } from '../types';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -18,11 +18,15 @@ const CalendarPage: React.FC = () => {
     const [editFormData, setEditFormData] = useState<Partial<ScheduleEvent>>({});
     const [showMtgModal, setShowMtgModal] = useState(false);
     const [memoEventId, setMemoEventId] = useState<string | null>(null);
+    const [travelExpenses, setTravelExpenses] = useState<TravelExpenseItem[]>([]);
+    const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
 
     useEffect(() => {
         setEvents(storage.getEvents());
         setTasks(storage.getTasks());
         setMtgDefs(storage.getMeetingDefinitions());
+        setTravelExpenses(storage.getTravelExpenses());
+        setGlobalMemos(storage.getMemos());
         setCurrentRoleId(storage.getCurrentRoleId());
         setShowAllItems(storage.getShowAllItems());
     }, []);
@@ -129,9 +133,33 @@ const CalendarPage: React.FC = () => {
         handleStartEdit(newEvent);
     };
 
-    const handleSaveMemos = (eventId: string, memos: MemoItem[]) => {
-        const newEvents = events.map(e => e.id === eventId ? { ...e, memos } : e);
-        saveEvents(newEvents);
+    const handleSaveMemos = (id: string, newMemos: MemoItem[]) => {
+        const otherMemos = globalMemos.filter(m => m.linkedEventId !== id && m.linkedTaskId !== id);
+        const updatedGlobalMemos = [...otherMemos, ...newMemos];
+        setGlobalMemos(updatedGlobalMemos);
+        storage.saveMemos(updatedGlobalMemos);
+    };
+
+    const handleAddTravelExpense = () => {
+        if (!selectedDate) return;
+        const newItem: TravelExpenseItem = {
+            id: Date.now().toString(),
+            title: '新規移動',
+            date: selectedDate,
+            routes: [],
+            totalAmount: 0
+        };
+        const newExpenses = [...travelExpenses, newItem];
+        setTravelExpenses(newExpenses);
+        storage.saveTravelExpenses(newExpenses);
+    };
+
+    const handleDeleteTravelExpense = (id: string) => {
+        if (confirm('この旅費データを削除しますか？')) {
+            const newExpenses = travelExpenses.filter(te => te.id !== id);
+            setTravelExpenses(newExpenses);
+            storage.saveTravelExpenses(newExpenses);
+        }
     };
 
     return (
@@ -194,8 +222,34 @@ const CalendarPage: React.FC = () => {
                 <div className="calendar-side">
                     {selectedDate ? (
                         <div className="detail-panel">
-                            <div className="panel-header">
-                                <h3>{selectedDate} の予定</h3>
+                            <div className="section-header">
+                                <h3>{selectedDate} の旅費精算</h3>
+                                <button className="small-primary-btn" onClick={handleAddTravelExpense}><Wallet size={16} /> 旅費を追加</button>
+                            </div>
+
+                            <div className="daily-travel-list">
+                                {travelExpenses.filter(te => te.date === selectedDate).map(te => (
+                                    <div key={te.id} className="travel-item-card">
+                                        <div className="travel-header">
+                                            <strong>{te.title || '移動'}</strong>
+                                            <span className="total">¥{(te.totalAmount || 0).toLocaleString()}</span>
+                                            <button className="del-btn-tiny" onClick={() => handleDeleteTravelExpense(te.id)}><Trash2 size={12} /></button>
+                                        </div>
+                                        <div className="travel-routes">
+                                            {te.routes.map((r, idx) => (
+                                                <div key={idx} className="route-tag">{r.from} → {r.to}</div>
+                                            ))}
+                                            {te.routes.length === 0 && <span className="empty-route">経路未登録</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                                {travelExpenses.filter(te => te.date === selectedDate).length === 0 && (
+                                    <p className="empty-hint">この日の旅費データはありません。</p>
+                                )}
+                            </div>
+
+                            <div className="section-header">
+                                <h3>{selectedDate} の予定・タスク</h3>
                                 <div className="add-actions">
                                     <button className="small-primary-btn" onClick={() => setShowMtgModal(true)}><Shield size={16} /> 会議体</button>
                                     <button className="small-primary-btn" onClick={handleAddEvent}><Plus size={16} /> 追加</button>
@@ -267,7 +321,7 @@ const CalendarPage: React.FC = () => {
                                                         onClick={(e) => { e.stopPropagation(); setMemoEventId(event.id); }}
                                                     >
                                                         <Edit3 size={12} />
-                                                        メモ ({event.memos?.length || 0})
+                                                        メモ ({globalMemos.filter(m => m.linkedEventId === event.id).length})
                                                     </button>
                                                 </div>
                                                 <div className="ev-hover-hint">タップで編集</div>
@@ -287,7 +341,7 @@ const CalendarPage: React.FC = () => {
                                         <div className="ev-memos-row">
                                             <button className="memo-btn-tiny" onClick={() => setMemoEventId(task.id)}>
                                                 <Edit3 size={12} />
-                                                メモ ({(task as any).memos?.length || 0})
+                                                メモ ({globalMemos.filter(m => m.linkedTaskId === task.id).length})
                                             </button>
                                         </div>
                                         {task.responseRate !== undefined && (
@@ -296,7 +350,7 @@ const CalendarPage: React.FC = () => {
                                     </div>
                                 ))}
 
-                                {events.filter(e => e.date === selectedDate).length === 0 && tasks.filter(t => t.dueDate === selectedDate).length === 0 && (
+                                {getFilteredEvents(selectedDate).length === 0 && tasks.filter(t => t.dueDate === selectedDate).length === 0 && (
                                     <div className="empty-state">この日の予定・タスクはありません。</div>
                                 )}
                             </div>
@@ -309,15 +363,9 @@ const CalendarPage: React.FC = () => {
 
             {memoEventId && (
                 <MemoEditor
-                    memos={(events.find(e => e.id === memoEventId)?.memos || (tasks.find(t => t.id === memoEventId) as any)?.memos || [])}
-                    onSave={(memos) => {
-                        if (events.find(e => e.id === memoEventId)) {
-                            handleSaveMemos(memoEventId, memos);
-                        } else {
-                            const newTasks = tasks.map(t => t.id === memoEventId ? { ...t, memos } as Task : t);
-                            setTasks(newTasks);
-                            storage.saveTasks(newTasks);
-                        }
+                    memos={globalMemos.filter(m => m.linkedEventId === memoEventId || m.linkedTaskId === memoEventId)}
+                    onSave={(newMemos) => {
+                        handleSaveMemos(memoEventId, newMemos);
                     }}
                     onClose={() => setMemoEventId(null)}
                 />
@@ -439,7 +487,7 @@ const CalendarPage: React.FC = () => {
           .day-number { font-size: 0.8rem; }
         }
       `}</style>
-        </div>
+        </div >
     );
 };
 

@@ -10,6 +10,7 @@ const KEYS = {
     TASKS: 'union_app_tasks',
     EVENTS: 'union_app_events',
     TRAVEL_EXPENSES: 'union_app_travel_expenses',
+    MEMOS: 'union_app_memos',
 };
 
 const SYNC_FILE_NAME = 'union_app_data.json';
@@ -45,6 +46,16 @@ export const storage = {
         storage.uploadToCloud();
     },
 
+    getMemos: (): any[] => {
+        const data = localStorage.getItem(KEYS.MEMOS);
+        return data ? JSON.parse(data) : [];
+    },
+
+    saveMemos: (memos: any[]): void => {
+        localStorage.setItem(KEYS.MEMOS, JSON.stringify(memos));
+        storage.uploadToCloud();
+    },
+
     /**
      * クラウドストレージ上の最新データで同期
      */
@@ -60,6 +71,7 @@ export const storage = {
             storage.saveTasks(cloudData.tasks);
             storage.saveEvents(cloudData.events);
             if (cloudData.travelExpenses) storage.saveTravelExpenses(cloudData.travelExpenses);
+            if (cloudData.memos) storage.saveMemos(cloudData.memos);
             // 他の設定データもlocalStorageにキャッシュ（必要に応じて）
             if (cloudData.roles) localStorage.setItem('union_app_roles', JSON.stringify(cloudData.roles));
             if (cloudData.taskDefinitions) localStorage.setItem('union_app_task_defs', JSON.stringify(cloudData.taskDefinitions));
@@ -104,6 +116,7 @@ export const storage = {
             taskDefinitions: storage.getTaskDefinitions(),
             meetingDefinitions: storage.getMeetingDefinitions(),
             travelExpenses: storage.getTravelExpenses(),
+            memos: storage.getMemos(),
             currentRoleId: storage.getCurrentRoleId(),
             showAllItems: storage.getShowAllItems(),
             lastSyncedAt: new Date().toISOString()
