@@ -310,6 +310,10 @@ const TaskList: React.FC = () => {
                       </button>
                     </div>
                   )}
+                  <button className="memo-btn-tiny" onClick={() => setMemoTaskId(task.id)}>
+                    <Edit3 size={12} />
+                    メモ ({task.memos?.length || 0})
+                  </button>
                 </div>
                 <div className="task-actions">
                   <button className="icon-btn" title="詳細編集" onClick={() => setEditingTask(task)}><Edit2 size={16} /></button>
@@ -410,7 +414,7 @@ const TaskList: React.FC = () => {
       {memoTaskId && (
         <MemoEditor
           memos={tasks.find(t => t.id === memoTaskId)?.memos || []}
-          onSave={(memos) => {
+          onSave={(memos: MemoItem[]) => {
             const newTasks = tasks.map(t => t.id === memoTaskId ? { ...t, memos } : t);
             saveTasks(newTasks);
           }}
@@ -799,6 +803,26 @@ const TaskList: React.FC = () => {
           opacity: 0.6;
         }
 
+        .memo-btn-tiny {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid #334155;
+          color: var(--text-muted);
+          font-size: 0.65rem;
+          padding: 2px 6px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .memo-btn-tiny:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+          color: var(--text-main);
+          border-color: var(--primary);
+        }
+
         .date-edit-group {
           display: flex;
           align-items: center;
@@ -939,7 +963,6 @@ const TaskList: React.FC = () => {
           .task-title { font-size: 1rem; }
           .page-header h1 { font-size: 1.5rem; }
           .modal-content { padding: 1.5rem; border-radius: 12px; }
-          .form-row { grid-template-columns: 1fr; gap: 1rem; }
         }
       `}</style>
     </div >
