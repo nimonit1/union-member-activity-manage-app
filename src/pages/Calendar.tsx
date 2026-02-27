@@ -489,12 +489,14 @@ const CalendarPage: React.FC = () => {
         .calendar-day.empty { cursor: default; }
         .day-number { font-size: 0.9rem; font-weight: 600; }
         .day-events { display: flex; flex-wrap: wrap; gap: 4px; }
-        .event-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .event-dot.meeting { background-color: var(--primary); }
+        .event-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .event-dot.meeting { background-color: var(--warning); }
         .event-dot.negotiation { background-color: var(--danger); }
-        .event-dot.business_trip { background-color: var(--warning); }
+        .event-dot.business_trip { background-color: var(--primary); }
+        .event-dot.conference { background-color: #a855f7; } /* Purple */
+        .event-dot.training { background-color: #ec4899; } /* Pink */
         .event-dot.other { background-color: var(--text-muted); }
-        .task-dot { width: 8px; height: 8px; border-radius: 2px; background-color: #10b981; }
+        .task-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; border: 1px solid rgba(255,255,255,0.2); }
 
         .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
         .detail-tabs { display: flex; border-bottom: 1px solid #334155; background-color: #1e293b; }
