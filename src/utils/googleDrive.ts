@@ -13,7 +13,14 @@ export const googleDrive = {
      * Google Identity Services の初期化
      */
     init: () => {
-        console.log('Google Drive Sync: Initializing version 1.0.5...');
+        console.log('Google Drive Sync: Initializing version 1.0.6...');
+        // キャッシュされたトークンの復元
+        const cachedToken = sessionStorage.getItem('google_access_token');
+        if (cachedToken) {
+            accessToken = cachedToken;
+            console.log('Google Drive Sync: Restored token from session storage.');
+        }
+
         return new Promise<void>((resolve) => {
             const checkGsi = setInterval(() => {
                 if (window.google) {
@@ -26,6 +33,7 @@ export const googleDrive = {
                                 throw tokenResponse;
                             }
                             accessToken = tokenResponse.access_token;
+                            sessionStorage.setItem('google_access_token', accessToken || '');
                             resolve();
                         },
                     });
@@ -50,6 +58,7 @@ export const googleDrive = {
                     reject(response);
                 } else {
                     accessToken = response.access_token;
+                    sessionStorage.setItem('google_access_token', accessToken || '');
                     resolve();
                 }
             };
@@ -64,7 +73,10 @@ export const googleDrive = {
         if (accessToken) {
             window.google.accounts.oauth2.revoke(accessToken, () => {
                 accessToken = null;
+                sessionStorage.removeItem('google_access_token');
             });
+        } else {
+            sessionStorage.removeItem('google_access_token');
         }
     },
 

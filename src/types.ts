@@ -64,6 +64,7 @@ export interface ScheduleEvent {
     startTime?: string;
     endTime?: string;
     category: EventCategory;
+    status?: TaskStatus; // 追加: 進捗管理用
     location?: string;
     memo?: string; // 互換性のための既存フィールド
     expense?: TravelExpense; // 互換性のための既存フィールド

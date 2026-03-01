@@ -77,9 +77,9 @@ classDiagram
 
 全てのデータは一つのJSONオブジェクトとして管理されます。
 
-- `version`: データ構造のバージョン（現在: 6）。
+- `version`: データ構造のバージョン（現在: 7）。
 - `tasks`: タスクの配列（役職に応じたフィルタリング、サブタスク対応。メモは外部参照）。
-- `events`: スケジュールの配列（会議体からのインポート対応。メモは外部参照）。
+- `events`: スケジュールの配列（会議体からのインポート対応。`status` による進捗管理。メモは外部参照）。
 - `travelExpenses`: 独立した旅費精算データの配列。
 - `memos`: グローバルに集約されたメモデータの配列（IDによる紐付け）。
 - `memoTemplates`: メモ作成時に利用する定型文テンプレートの配列。
@@ -103,7 +103,7 @@ sequenceDiagram
     
     U->>B: ページ読み込み
     B->>B: storage.init() / localStorageから旧データ読込
-    B->>G: auth.init() サイレントサインイン
+    B->>G: auth.init() サイレントサインイン（sessionStorage のトークン優先）
     alt 認証成功
         B->>G: storage.syncWithCloud() 最新ファイル取得
         G-->>B: union_app_data.json
@@ -113,7 +113,7 @@ sequenceDiagram
         B-->>U: ログインボタン表示
     end
     
-    U->>B: データの変更 (タスク完了等)
+    U->>B: データの変更 (タスク完了、予定進捗更新等)
     B->>B: save to localStorage
     B->>G: updateFileContent (Background)
 ```

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { ScheduleEvent, Task, MeetingDefinition } from '../types';
+import { ScheduleEvent, Task, MeetingDefinition, Role } from '../types';
 import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3 } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
@@ -22,6 +22,8 @@ const CalendarPage: React.FC = () => {
     const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
     const [activeTab, setActiveTab] = useState<'schedule' | 'travel'>('schedule');
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+    const [filterRoleId, setFilterRoleId] = useState<string>(''); // 追加: カレンダー内フィルタ用
+    const [roles, setRoles] = useState<Role[]>([]); // 追加: 役職リスト
 
     useEffect(() => {
         setEvents(storage.getEvents());
@@ -29,7 +31,10 @@ const CalendarPage: React.FC = () => {
         setMtgDefs(storage.getMeetingDefinitions());
         setTravelExpenses(storage.getTravelExpenses());
         setGlobalMemos(storage.getMemos());
-        setCurrentRoleId(storage.getCurrentRoleId());
+        setRoles(storage.getRoles());
+        const savedRoleId = storage.getCurrentRoleId();
+        setCurrentRoleId(savedRoleId);
+        setFilterRoleId(savedRoleId); // 初期値は設定値に合わせる
         setShowAllItems(storage.getShowAllItems());
     }, []);
 
@@ -83,10 +88,13 @@ const CalendarPage: React.FC = () => {
             if (e.date !== dateStr) return false;
             if (showAllItems) return true;
 
+            // フィルタ対象の役職ID（画面上の選択を優先）
+            const targetRoleId = filterRoleId || currentRoleId;
+
             // 会議体定義に基づく予定かチェック
             const def = mtgDefs.find(d => d.name === e.title);
-            if (def && currentRoleId) {
-                return def.roleIds.includes(currentRoleId);
+            if (def && targetRoleId) {
+                return def.roleIds.includes(targetRoleId);
             }
             return true;
         });
@@ -97,11 +105,13 @@ const CalendarPage: React.FC = () => {
             if (t.dueDate !== dateStr) return false;
             if (showAllItems) return true;
 
+            const targetRoleId = filterRoleId || currentRoleId;
+
             // タスク管理側のロジックと同様
             const storageDefs = storage.getTaskDefinitions();
             const def = storageDefs.find((d: any) => d.title === t.title);
-            if (def && currentRoleId) {
-                return def.roleIds.includes(currentRoleId);
+            if (def && targetRoleId) {
+                return def.roleIds.includes(targetRoleId);
             }
             return true;
         });
@@ -114,6 +124,7 @@ const CalendarPage: React.FC = () => {
             title: '新規予定',
             date: selectedDate,
             category: 'other',
+            status: 'todo',
             expense: { routes: [], totalAmount: 0 }
         };
         saveEvents([...events, newEvent]);
@@ -128,6 +139,7 @@ const CalendarPage: React.FC = () => {
             memo: def.content,
             date: selectedDate,
             category: 'meeting',
+            status: 'todo',
             expense: { routes: [], totalAmount: 0 }
         };
         saveEvents([...events, newEvent]);
@@ -183,12 +195,17 @@ const CalendarPage: React.FC = () => {
             <header className="page-header">
                 <h1>スケジュール管理</h1>
                 <div className="header-actions">
-                    {!showAllItems && currentRoleId && (
-                        <span className="filter-status">
-                            <Filter size={14} />
-                            役職フィルタ有効
-                        </span>
-                    )}
+                    <div className="filter-area">
+                        <Filter size={16} />
+                        <select
+                            value={filterRoleId}
+                            onChange={(e) => setFilterRoleId(e.target.value)}
+                            className="role-filter-select"
+                        >
+                            <option value="">全役職の共通項目</option>
+                            {roles.map(r => <option key={r.id} value={r.id}>{r.name}として表示</option>)}
+                        </select>
+                    </div>
                     <div className="month-nav">
                         <button className="icon-btn" onClick={prevMonth}><ChevronLeft /></button>
                         <span className="current-month-label">{year}年 {month + 1}月</span>
@@ -220,7 +237,7 @@ const CalendarPage: React.FC = () => {
                                                 <span className="day-number">{day}</span>
                                                 <div className="day-events">
                                                     {dayEvents.map(e => (
-                                                        <div key={e.id} className={`event-dot ${e.category}`}></div>
+                                                        <div key={e.id} className={`event-dot ${e.category} ${e.status === 'completed' ? 'completed' : ''}`}></div>
                                                     ))}
                                                     {dayTasks.filter(t => t.status !== 'completed').map(t => (
                                                         <div key={t.id} className="task-dot"></div>
@@ -343,6 +360,19 @@ const CalendarPage: React.FC = () => {
                                                             <input type="time" value={editFormData.endTime || ''} onChange={e => setEditFormData({ ...editFormData, endTime: e.target.value })} />
                                                         </div>
                                                         <div className="edit-row">
+                                                            <Edit3 size={16} />
+                                                            <select
+                                                                className="edit-status"
+                                                                value={editFormData.status || 'todo'}
+                                                                onChange={e => setEditFormData({ ...editFormData, status: e.target.value as any })}
+                                                            >
+                                                                <option value="todo">未着手</option>
+                                                                <option value="in_progress">進行中</option>
+                                                                <option value="completed">完了</option>
+                                                                <option value="on_hold">保留</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="edit-row">
                                                             <MapPin size={16} />
                                                             <input className="edit-loc" value={editFormData.location || ''} onChange={e => setEditFormData({ ...editFormData, location: e.target.value })} placeholder="場所" />
                                                         </div>
@@ -371,9 +401,12 @@ const CalendarPage: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="event-display-card" onClick={() => handleStartEdit(event)}>
+                                                    <div className={`event-display-card ${event.status === 'completed' ? 'completed' : ''}`} onClick={() => handleStartEdit(event)}>
                                                         <div className="ev-header">
-                                                            <span className={`ev-cat-tag ${event.category}`}>{event.category}</span>
+                                                            <div className="ev-left">
+                                                                <span className={`ev-cat-tag ${event.category}`}>{event.category}</span>
+                                                                {event.status === 'completed' && <span className="completed-badge">完了</span>}
+                                                            </div>
                                                             <span className="ev-time">{event.startTime || ''}</span>
                                                         </div>
                                                         <h4 className="ev-title">{event.title}</h4>
@@ -498,6 +531,7 @@ const CalendarPage: React.FC = () => {
         .event-dot.conference { background-color: #a855f7; } /* Purple */
         .event-dot.training { background-color: #ec4899; } /* Pink */
         .event-dot.other { background-color: var(--text-muted); }
+        .event-dot.completed { opacity: 0.3; filter: grayscale(1); }
         .task-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; border: 1px solid rgba(255,255,255,0.2); }
 
         .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
@@ -534,6 +568,15 @@ const CalendarPage: React.FC = () => {
         .memo-btn-tiny:hover { background-color: rgba(255, 255, 255, 0.1); color: var(--text-main); }
         .ev-hover-hint { position: absolute; bottom: 0.5rem; right: 0.5rem; font-size: 0.65rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
         .event-display-card:hover .ev-hover-hint { opacity: 1; }
+        .event-display-card.completed { opacity: 0.6; filter: grayscale(0.5); }
+        .event-display-card.completed .ev-title { text-decoration: line-through; color: var(--text-muted); }
+        .completed-badge { font-size: 0.65rem; background-color: #1e293b; color: var(--text-muted); border: 1px solid #475569; padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 0.5rem; }
+        .ev-left { display: flex; align-items: center; }
+
+        .filter-area { display: flex; align-items: center; gap: 0.5rem; background-color: var(--bg-card); padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid #334155; }
+        .role-filter-select { background: none; border: none; color: var(--primary); font-size: 0.85rem; font-weight: 700; outline: none; cursor: pointer; }
+        .role-filter-select option { background-color: #1e293b; color: white; }
+        .edit-status { background-color: #334155; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; flex: 1; }
 
         .travel-item-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid #334155; border-radius: 10px; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
         .travel-item-card:hover:not(.editing) { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
