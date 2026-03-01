@@ -10,16 +10,20 @@ const SyncStatus: React.FC = () => {
 
     useEffect(() => {
         const checkAuth = async () => {
-            // 初期状態の確認
-            const authenticated = googleDrive.isAuthenticated();
-            setIsAuthenticated(authenticated);
+            // APIの初期化を待つ（App.tsxでinitされているはずだが念のため）
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            // すでにログインの意志がある（localStorageにフラグがある）場合は自動再接続を試行
+            // sessionStorage または localStorage のフラグを確認
+            const authenticated = googleDrive.isAuthenticated();
             const shouldSync = localStorage.getItem('union_app_sync_enabled') === 'true';
-            if (!authenticated && shouldSync) {
+
+            if (authenticated) {
+                // すでにトークンが復元されている（sessionStorage）
+                setIsAuthenticated(true);
+                handleSync();
+            } else if (shouldSync) {
+                // トークンはないが同期設定がON（リロード・ブリッジ失敗時や初回）
                 try {
-                    // APIの初期化を待つ（App.tsxでinitされているはずだが念のため）
-                    await new Promise(resolve => setTimeout(resolve, 1000));
                     await googleDrive.signIn(true); // サイレントサインイン
                     setIsAuthenticated(true);
                     handleSync();
@@ -28,6 +32,8 @@ const SyncStatus: React.FC = () => {
                     localStorage.removeItem('union_app_sync_enabled');
                     setIsAuthenticated(false);
                 }
+            } else {
+                setIsAuthenticated(false);
             }
         };
 

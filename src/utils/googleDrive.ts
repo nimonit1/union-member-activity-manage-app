@@ -37,6 +37,7 @@ export const googleDrive = {
                             resolve();
                         },
                     });
+                    // 初期化完了を通知（トークン復元済みでも初期化は必要）
                     resolve();
                 }
             }, 100);

@@ -101,17 +101,23 @@ sequenceDiagram
     participant B as Browser (Local)
     participant G as Google Drive (Cloud)
     
-    U->>B: ページ読み込み
+    U->>B: ページ読み込み (リフレッシュ)
     B->>B: storage.init() / localStorageから旧データ読込
-    B->>G: auth.init() サイレントサインイン（sessionStorage のトークン優先）
-    alt 認証成功
+    B->>B: googleDrive.init() (sessionStorage からトークン復元)
+    alt トークンあり (sessionStorage)
+        B->>B: SyncStatus: 自動同期開始
         B->>G: storage.syncWithCloud() 最新ファイル取得
-        G-->>B: union_app_data.json
-        B->>B: migrations.migrateData() 必要なら移行
-        B->>B: UI状態更新
-    else 認証失敗/初回
-        B-->>U: ログインボタン表示
+    else トークンなし & 同期有効フラグあり (localStorage)
+        B->>G: auth.init() サイレントサインイン試行
+        alt 認証成功
+            B->>G: storage.syncWithCloud() 最新ファイル取得
+        else 認証失敗/初ログイン
+            B-->>U: ログインボタン表示
+        end
     end
+    G-->>B: union_app_data.json
+    B->>B: migrations.migrateData() 必要なら移行
+    B->>B: UI状態更新
     
     U->>B: データの変更 (タスク完了、予定進捗更新等)
     B->>B: save to localStorage

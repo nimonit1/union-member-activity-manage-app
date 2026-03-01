@@ -24,6 +24,8 @@ const CalendarPage: React.FC = () => {
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [filterRoleId, setFilterRoleId] = useState<string>(''); // 追加: カレンダー内フィルタ用
     const [roles, setRoles] = useState<Role[]>([]); // 追加: 役職リスト
+    const [editingTaskId, setEditingTaskId] = useState<string | null>(null); // 追加: タスク編集用
+    const [taskEditFormData, setTaskEditFormData] = useState<Partial<Task>>({}); // 追加: タスク編集データ
 
     useEffect(() => {
         setEvents(storage.getEvents());
@@ -89,12 +91,13 @@ const CalendarPage: React.FC = () => {
             if (showAllItems) return true;
 
             // フィルタ対象の役職ID（画面上の選択を優先）
-            const targetRoleId = filterRoleId || currentRoleId;
+            // 未選択（空文字）の場合はフィルタなし（全表示）
+            if (!filterRoleId) return true;
 
             // 会議体定義に基づく予定かチェック
             const def = mtgDefs.find(d => d.name === e.title);
-            if (def && targetRoleId) {
-                return def.roleIds.includes(targetRoleId);
+            if (def) {
+                return def.roleIds.includes(filterRoleId);
             }
             return true;
         });
@@ -105,13 +108,13 @@ const CalendarPage: React.FC = () => {
             if (t.dueDate !== dateStr) return false;
             if (showAllItems) return true;
 
-            const targetRoleId = filterRoleId || currentRoleId;
+            if (!filterRoleId) return true;
 
             // タスク管理側のロジックと同様
             const storageDefs = storage.getTaskDefinitions();
             const def = storageDefs.find((d: any) => d.title === t.title);
-            if (def && targetRoleId) {
-                return def.roleIds.includes(targetRoleId);
+            if (def) {
+                return def.roleIds.includes(filterRoleId);
             }
             return true;
         });
@@ -190,6 +193,28 @@ const CalendarPage: React.FC = () => {
         storage.saveTravelExpenses(newExpenses);
     };
 
+    const handleStartTaskEdit = (task: Task) => {
+        setEditingTaskId(task.id);
+        setTaskEditFormData({ ...task });
+    };
+
+    const handleSaveTaskEdit = () => {
+        if (!taskEditFormData.title || !editingTaskId) return;
+        const updatedTasks = tasks.map(t => t.id === editingTaskId ? { ...t, ...taskEditFormData } : t);
+        setTasks(updatedTasks);
+        storage.saveTasks(updatedTasks);
+        setEditingTaskId(null);
+    };
+
+    const handleDeleteTask = (id: string) => {
+        if (confirm('このタスクを削除しますか？')) {
+            const updatedTasks = tasks.filter(t => t.id !== id);
+            setTasks(updatedTasks);
+            storage.saveTasks(updatedTasks);
+            if (editingTaskId === id) setEditingTaskId(null);
+        }
+    };
+
     return (
         <div className="calendar-page">
             <header className="page-header">
@@ -202,8 +227,12 @@ const CalendarPage: React.FC = () => {
                             onChange={(e) => setFilterRoleId(e.target.value)}
                             className="role-filter-select"
                         >
-                            <option value="">全役職の共通項目</option>
-                            {roles.map(r => <option key={r.id} value={r.id}>{r.name}として表示</option>)}
+                            <option value="">（全表示 / フィルタ解除）</option>
+                            {roles.map(r => (
+                                <option key={r.id} value={r.id}>
+                                    {r.id === currentRoleId ? `🚩 自分の役職 (${r.name})` : `${r.name} のみ表示`}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <div className="month-nav">
@@ -433,21 +462,66 @@ const CalendarPage: React.FC = () => {
                                         ))}
 
                                         {tasks.filter(t => t.dueDate === selectedDate).map(task => (
-                                            <div key={task.id} className={`task-display-card ${task.status}`}>
-                                                <div className="ev-header">
-                                                    <span className="task-badge">{task.category === 'union_member' ? '🔴 組合員対応' : '🔵 事務タスク'}</span>
-                                                    <span className="task-status-tag">{task.status === 'completed' ? '完了' : '期限日'}</span>
-                                                </div>
-                                                <h4 className="ev-title">【タスク】{task.title}</h4>
-                                                <div className="ev-loc">{task.description}</div>
-                                                <div className="ev-memos-row">
-                                                    <button className="memo-btn-tiny" onClick={() => setMemoEventId(task.id)}>
-                                                        <Edit3 size={12} />
-                                                        メモ ({globalMemos.filter(m => m.linkedTaskId === task.id).length})
-                                                    </button>
-                                                </div>
-                                                {task.responseRate !== undefined && (
-                                                    <div className="task-rate">回答率: {task.responseRate}%</div>
+                                            <div key={task.id} className="event-item-container">
+                                                {editingTaskId === task.id ? (
+                                                    <div className="event-edit-form task-edit">
+                                                        <input
+                                                            className="edit-title"
+                                                            value={taskEditFormData.title || ''}
+                                                            onChange={e => setTaskEditFormData({ ...taskEditFormData, title: e.target.value })}
+                                                            placeholder="タスク名"
+                                                        />
+                                                        <div className="edit-row">
+                                                            <Edit3 size={16} />
+                                                            <select
+                                                                className="edit-status"
+                                                                value={taskEditFormData.status || 'todo'}
+                                                                onChange={e => setTaskEditFormData({ ...taskEditFormData, status: e.target.value as any })}
+                                                            >
+                                                                <option value="todo">未着手</option>
+                                                                <option value="in_progress">進行中</option>
+                                                                <option value="completed">完了</option>
+                                                                <option value="on_hold">保留</option>
+                                                            </select>
+                                                        </div>
+                                                        <textarea
+                                                            className="edit-desc"
+                                                            value={taskEditFormData.description || ''}
+                                                            onChange={e => setTaskEditFormData({ ...taskEditFormData, description: e.target.value })}
+                                                            placeholder="タスクの説明"
+                                                            rows={3}
+                                                        />
+                                                        <div className="edit-actions">
+                                                            <button className="save-btn" onClick={handleSaveTaskEdit}><Save size={16} /> 保存</button>
+                                                            <button className="delete-btn-action" onClick={() => handleDeleteTask(task.id)}><Trash2 size={16} /> 削除</button>
+                                                            <button className="cancel-btn" onClick={() => setEditingTaskId(null)}><X size={16} /> キャンセル</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`task-display-card ${task.status}`} onClick={() => handleStartTaskEdit(task)}>
+                                                        <div className="ev-header">
+                                                            <div className="ev-left">
+                                                                <span className="task-badge">{task.category === 'union_member' ? '🔴 組合員対応' : '🔵 事務タスク'}</span>
+                                                                {task.status === 'completed' && <span className="completed-badge">完了</span>}
+                                                            </div>
+                                                            <span className="task-status-tag">{task.status === 'completed' ? '完了' : '期限日'}</span>
+                                                        </div>
+                                                        <h4 className="ev-title">【タスク】{task.title}</h4>
+                                                        <div className="ev-loc">{task.description}</div>
+                                                        {task.responseRate !== undefined && (
+                                                            <div className="task-rate">回答率: {task.responseRate}%</div>
+                                                        )}
+                                                        <div className="ev-memos-row">
+                                                            <button
+                                                                className="memo-btn-tiny"
+                                                                onClick={(e) => { e.stopPropagation(); setMemoEventId(task.id); }}
+                                                            >
+                                                                <Edit3 size={12} />
+                                                                メモ ({globalMemos.filter(m => m.linkedTaskId === task.id).length})
+                                                            </button>
+                                                        </div>
+                                                        <div className="ev-hover-hint">タップで編集</div>
+                                                    </div>
                                                 )}
                                             </div>
                                         ))}
@@ -485,7 +559,11 @@ const CalendarPage: React.FC = () => {
                             <button className="close-btn" onClick={() => setShowMtgModal(false)}><X size={20} /></button>
                         </div>
                         <div className="mtg-grid">
-                            {mtgDefs.filter(d => showAllItems || !currentRoleId || d.roleIds.includes(currentRoleId)).map(def => (
+                            {mtgDefs.filter(d => {
+                                if (showAllItems) return true;
+                                const target = filterRoleId || currentRoleId;
+                                return !target || d.roleIds.includes(target);
+                            }).map(def => (
                                 <button key={def.id} className="mtg-card" onClick={() => handleAddFromDef(def)}>
                                     <div className="mtg-card-info">
                                         <strong>{def.name}</strong>
@@ -495,9 +573,13 @@ const CalendarPage: React.FC = () => {
                                     <Plus size={20} />
                                 </button>
                             ))}
-                            {mtgDefs.filter(d => showAllItems || !currentRoleId || d.roleIds.includes(currentRoleId)).length === 0 && (
-                                <p className="empty-hint">現在選択中の役職に該当する会議体定義はありません。</p>
-                            )}
+                            {mtgDefs.filter(d => {
+                                if (showAllItems) return true;
+                                const target = filterRoleId || currentRoleId;
+                                return !target || d.roleIds.includes(target);
+                            }).length === 0 && (
+                                    <p className="empty-hint">現在選択中の役職に該当する会議体定義はありません。</p>
+                                )}
                         </div>
                     </div>
                 </div>
@@ -606,6 +688,7 @@ const CalendarPage: React.FC = () => {
         .edit-row input { background: none; border: 1px solid #334155; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }
         .edit-loc { flex: 1; border: none !important; border-bottom: 1px solid #334155 !important; border-radius: 0 !important; }
         .edit-cat { background-color: #334155; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.875rem; }
+        .edit-desc { background-color: #334155; color: white; border: 1px solid #475569; padding: 8px; border-radius: 4px; font-size: 0.875rem; width: 100%; resize: vertical; margin-top: 0.5rem; }
         .edit-actions { display: flex; gap: 1rem; margin-top: 1rem; }
         .save-btn { flex: 1; background-color: var(--primary); color: white; border: none; padding: 0.6rem; border-radius: 6px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .delete-btn-action { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 0.6rem; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
