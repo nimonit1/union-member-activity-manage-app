@@ -172,6 +172,23 @@ export const googleDrive = {
     },
 
     /**
+     * ファイルのメタデータ取得（更新日時など）
+     */
+    getFileMetadata: async (fileId: string) => {
+        if (!accessToken) throw new Error('Not authenticated');
+
+        const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,modifiedTime`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Metadata fetch failed: ${response.status}`);
+        }
+
+        return await googleDrive.safeParseJson(response);
+    },
+
+    /**
      * ファイルの更新
      */
     updateFileContent: async (fileId: string, content: any) => {

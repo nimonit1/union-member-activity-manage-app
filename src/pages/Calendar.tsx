@@ -268,8 +268,8 @@ const CalendarPage: React.FC = () => {
                                                     {dayEvents.map(e => (
                                                         <div key={e.id} className={`event-dot ${e.category} ${e.status === 'completed' ? 'completed' : ''}`}></div>
                                                     ))}
-                                                    {dayTasks.filter(t => t.status !== 'completed').map(t => (
-                                                        <div key={t.id} className="task-dot"></div>
+                                                    {dayTasks.map(t => (
+                                                        <div key={t.id} className={`task-dot ${t.status === 'completed' ? 'completed' : ''}`}></div>
                                                     ))}
                                                 </div>
                                             </>
@@ -613,8 +613,9 @@ const CalendarPage: React.FC = () => {
         .event-dot.conference { background-color: #a855f7; } /* Purple */
         .event-dot.training { background-color: #ec4899; } /* Pink */
         .event-dot.other { background-color: var(--text-muted); }
-        .event-dot.completed { opacity: 0.3; filter: grayscale(1); }
+        .event-dot.completed { background-color: #64748b !important; opacity: 0.6; }
         .task-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; border: 1px solid rgba(255,255,255,0.2); }
+        .task-dot.completed { background-color: #64748b !important; opacity: 0.6; }
 
         .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
         .detail-tabs { display: flex; border-bottom: 1px solid #334155; background-color: #1e293b; }

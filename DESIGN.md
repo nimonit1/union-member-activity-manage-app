@@ -118,6 +118,17 @@ sequenceDiagram
     G-->>B: union_app_data.json
     B->>B: migrations.migrateData() 必要なら移行
     B->>B: UI状態更新
+
+    Note over User, Browser (Local): 自動同期トリガー (v9)
+    rect rgb(30, 40, 60)
+        User->>Browser (Local): ウィンドウフォーカス / 3分経過
+        Browser (Local)->>G: getFileMetadata(fileId)
+        Browser (Local)->>Browser (Local): 前回同期時刻と比較
+        alt クラウドが新しい
+            Browser (Local)->>G: storage.syncWithCloud()
+            Browser (Local)->>Browser (Local): ページリロードで反映
+        end
+    end
     
     U->>B: データの変更 (タスク完了、予定進捗更新等)
     B->>B: save to localStorage

@@ -20,13 +20,13 @@ const SyncStatus: React.FC = () => {
             if (authenticated) {
                 // すでにトークンが復元されている（sessionStorage）
                 setIsAuthenticated(true);
-                handleSync();
+                handleSync(true);
             } else if (shouldSync) {
                 // トークンはないが同期設定がON（リロード・ブリッジ失敗時や初回）
                 try {
                     await googleDrive.signIn(true); // サイレントサインイン
                     setIsAuthenticated(true);
-                    handleSync();
+                    handleSync(true);
                 } catch (e) {
                     console.log('Auto-reconnect failed (expired or revoked):', e);
                     localStorage.removeItem('union_app_sync_enabled');
@@ -38,6 +38,26 @@ const SyncStatus: React.FC = () => {
         };
 
         checkAuth();
+
+        // 定期的な同期チェック (3分おき)
+        const interval = setInterval(() => {
+            if (googleDrive.isAuthenticated()) {
+                handleSync(false); // バックグラウンドチェック
+            }
+        }, 3 * 60 * 1000);
+
+        // ウィンドウフォーカス時の同期チェック
+        const onFocus = () => {
+            if (googleDrive.isAuthenticated()) {
+                handleSync(false);
+            }
+        };
+        window.addEventListener('focus', onFocus);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('focus', onFocus);
+        };
     }, []);
 
     const handleSignIn = async () => {
@@ -58,19 +78,43 @@ const SyncStatus: React.FC = () => {
         setIsAuthenticated(false);
     };
 
-    const handleSync = async () => {
+    const handleSync = async (force: boolean = true) => {
         if (isSyncing) return;
+
+        // 認証チェック
+        if (!googleDrive.isAuthenticated()) return;
+
         setIsSyncing(true);
         try {
+            if (!force) {
+                // メタデータを確認して、クラウド側が新しい場合のみ同期する
+                const fileId = await googleDrive.getOrCreateFile('union_app_data.json');
+                const meta = await googleDrive.getFileMetadata(fileId);
+                const cloudTime = meta?.modifiedTime;
+
+                // localStorage に保存されている最終同期時刻と比較
+                const localLastSync = localStorage.getItem('union_app_last_cloud_sync');
+                if (cloudTime && localLastSync && new Date(cloudTime) <= new Date(localLastSync)) {
+                    // クラウド側が更新されていなければスキップ
+                    return;
+                }
+            }
+
             await storage.syncWithCloud();
-            setLastSynced(new Date().toLocaleTimeString());
-            // 同期完了後に画面をリロードまたは状態を更新する必要があるかもしれないが、
-            // 今回は簡易的にリロードを促すか、親コンポーネントで管理するのが望ましい。
-            // ここでは簡易的に成功メッセージを表示。
+            const now = new Date();
+            setLastSynced(now.toLocaleTimeString());
+            localStorage.setItem('union_app_last_cloud_sync', now.toISOString());
+
+            // 自動同期でクラウド側が高い（更新された）場合はリロードして反映
+            if (!force) {
+                window.location.reload();
+            }
         } catch (error: any) {
-            console.error('Detailed Sync Error:', error);
-            const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-            alert(`同期に失敗しました。\n詳細: ${errorMsg}\n\n※コンソールが確認できる場合は詳細を確認してください。`);
+            console.error('Sync Error:', error);
+            if (force) {
+                const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+                alert(`同期に失敗しました。\n詳細: ${errorMsg}`);
+            }
         } finally {
             setIsSyncing(false);
         }
@@ -119,7 +163,7 @@ const SyncStatus: React.FC = () => {
                 </div>
             </div>
             <div className="actions">
-                <button className="icon-btn" onClick={handleSync} title="今すぐ同期" disabled={isSyncing}>
+                <button className="icon-btn" onClick={() => handleSync(true)} title="今すぐ同期" disabled={isSyncing}>
                     <RefreshCw size={14} />
                 </button>
                 <button className="icon-btn" onClick={handleSignOut} title="ログアウト">
