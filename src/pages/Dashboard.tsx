@@ -25,7 +25,11 @@ const Dashboard: React.FC = () => {
   const isTaskVisible = (t: Task) => {
     if (showAllItems) return true;
     const def = taskDefs.find((d: any) => d.title === t.title);
-    if (def && currentRoleId) return def.roleIds.includes(currentRoleId);
+    if (def && currentRoleId) {
+      if (def.roleIds && def.roleIds.length > 0) {
+        return def.roleIds.includes(currentRoleId);
+      }
+    }
     return true;
   };
 

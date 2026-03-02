@@ -2,7 +2,7 @@
  * アプリケーション全体で使用する型定義
  */
 
-export type TaskCategory = 'union_member' | 'administrative';
+export type TaskCategory = 'union_member' | 'administrative' | 'committee';
 
 export type TaskStatus = 'todo' | 'in_progress' | 'completed' | 'on_hold';
 

@@ -351,7 +351,11 @@ const SettingsPage: React.FC = () => {
                                                     <strong>{def.title}</strong>
                                                     <div className="sub-text">{def.description}</div>
                                                 </td>
-                                                <td>{def.category === 'union_member' ? '🔴 組合員' : '🔵 事務'}</td>
+                                                <td>
+                                                    {def.category === 'union_member' && '🔴 組合員'}
+                                                    {def.category === 'administrative' && '🔵 事務'}
+                                                    {def.category === 'committee' && '🟢 委員'}
+                                                </td>
                                                 <td><span className={`prio-tag ${def.priority}`}>{def.priority}</span></td>
                                                 <td>
                                                     <div className="role-mini-badges">
@@ -381,6 +385,7 @@ const SettingsPage: React.FC = () => {
                                                     <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any })}>
                                                         <option value="union_member">🔴 組合員</option>
                                                         <option value="administrative">🔵 事務</option>
+                                                        <option value="committee">🟢 委員</option>
                                                     </select>
                                                     <select value={newTaskDef.priority} onChange={e => setNewTaskDef({ ...newTaskDef, priority: e.target.value as any })}>
                                                         <option value="high">高</option>
@@ -513,6 +518,7 @@ const SettingsPage: React.FC = () => {
                                     <select value={editingTaskDef.category} onChange={e => setEditingTaskDef({ ...editingTaskDef, category: e.target.value as any })}>
                                         <option value="union_member">🔴 組合員関連</option>
                                         <option value="administrative">🔵 事務タスク</option>
+                                        <option value="committee">🟢 委員タスク</option>
                                     </select>
                                 </div>
                                 <div className="form-group">

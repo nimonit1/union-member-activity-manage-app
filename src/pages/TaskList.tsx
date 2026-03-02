@@ -86,7 +86,7 @@ const TaskList: React.FC = () => {
       status: 'todo',
       priority: def.priority,
       createdAt: new Date().toISOString(),
-      responseRate: def.category === 'union_member' ? 0 : undefined,
+      responseRate: (def.category === 'union_member') ? 0 : undefined,
       subtasks: (def.subtasks || []).map(s => ({
         id: `sub-${Math.random().toString(36).substr(2, 9)}`,
         title: s.title,
@@ -109,9 +109,12 @@ const TaskList: React.FC = () => {
 
     // 役職に紐付いたタスク（定義から作成された場合）のチェック
     // 既存のタスクに roleIds がない場合（直接作成された等）は表示する
-    const taskDef = taskDefs.find(d => d.title === t.title); // タイトルで簡易一致
+    const taskDef = taskDefs.find(d => d.title === t.title);
     if (taskDef && currentRoleId) {
-      return taskDef.roleIds.includes(currentRoleId);
+      // 役職が指定されている定義の場合のみフィルタリング
+      if (taskDef.roleIds.length > 0) {
+        return taskDef.roleIds.includes(currentRoleId);
+      }
     }
 
     return true;
@@ -121,6 +124,8 @@ const TaskList: React.FC = () => {
   const visibleTemplates = taskDefs.filter(def => {
     if (showAllItems) return true;
     if (!currentRoleId) return true;
+    // 役職未指定（空配列）の定義は全員に表示する
+    if (def.roleIds.length === 0) return true;
     return def.roleIds.includes(currentRoleId);
   });
 
@@ -189,7 +194,9 @@ const TaskList: React.FC = () => {
           {visibleTemplates.map(def => (
             <button key={def.id} className="template-card" onClick={() => createFromTemplate(def.id)}>
               <div className={`tpl-icon ${def.category}`}>
-                {def.category === 'union_member' ? '🔴' : '🔵'}
+                {def.category === 'union_member' && '🔴'}
+                {def.category === 'administrative' && '🔵'}
+                {def.category === 'committee' && '🟢'}
               </div>
               <div className="tpl-text">
                 <span className="tpl-title">{def.title}</span>
@@ -213,6 +220,12 @@ const TaskList: React.FC = () => {
           onClick={() => setActiveTab('administrative')}
         >
           🔵 事務タスク
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'committee' ? 'active' : ''}`}
+          onClick={() => setActiveTab('committee')}
+        >
+          🟢 委員タスク
         </button>
       </nav>
 
@@ -367,6 +380,7 @@ const TaskList: React.FC = () => {
                     >
                       <option value="union_member">🔴 組合員関連</option>
                       <option value="administrative">🔵 事務タスク</option>
+                      <option value="committee">🟢 委員タスク</option>
                     </select>
                   </div>
                   <div className="form-group">

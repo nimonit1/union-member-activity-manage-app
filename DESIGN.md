@@ -84,6 +84,7 @@ classDiagram
 - `memos`: グローバルに集約されたメモデータの配列（IDによる紐付け）。
 - `memoTemplates`: メモ作成時に利用する定型文テンプレートの配列。
 - `roles`: 役職定義の配列。
+- `TaskCategory`: `'union_member'` (組合員), `'administrative'` (事務), `'committee'` (委員)
 - `taskDefinitions`: 定型タスク（テンプレート）の定義配列。
 - `meetingDefinitions`: 会議体（定例会議）の定義配列。
 - `currentRoleId`: ユーザー自身の現在の役職ID。
