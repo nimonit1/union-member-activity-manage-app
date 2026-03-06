@@ -83,6 +83,11 @@ const CalendarPage: React.FC = () => {
         const updatedEvents = events.map(e => e.id === editingEventId ? { ...e, ...editFormData, expense: finalExpense } : e);
         saveEvents(updatedEvents);
         setEditingEventId(null);
+
+        // 保存された予定が会議/打ち合わせの場合、旅費精算タスクを自動作成
+        if (editFormData.date && editFormData.category) {
+            checkAndCreateExpenseTask(editFormData.date, editFormData.category);
+        }
     };
 
     const getFilteredEvents = (dateStr: string) => {
@@ -148,6 +153,41 @@ const CalendarPage: React.FC = () => {
         saveEvents([...events, newEvent]);
         setShowMtgModal(false);
         handleStartEdit(newEvent);
+
+        // 会議体としての追加時、旅費精算タスクを自動作成
+        checkAndCreateExpenseTask(newEvent.date, newEvent.category);
+    };
+
+    /**
+     * 会議予定の1週間後に旅費精算タスクを自動作成する（重複チェック付き）
+     */
+    const checkAndCreateExpenseTask = (eventDate: string, category: string) => {
+        if (category !== 'meeting' && category !== 'conference') return;
+
+        // 1週間後の日付を計算
+        const d = new Date(eventDate);
+        d.setDate(d.getDate() + 7);
+        const dueDate = d.toISOString().split('T')[0];
+
+        // 重複チェック
+        const existingTasks = storage.getTasks();
+        const alreadyExists = existingTasks.some(t => t.title === '旅費精算' && t.dueDate === dueDate);
+
+        if (!alreadyExists) {
+            const newTask: Task = {
+                id: `auto-${Date.now()}`,
+                title: '旅費精算',
+                description: `${eventDate} の${category === 'meeting' ? '打ち合わせ' : '会議'}に伴う精算`,
+                category: 'administrative',
+                status: 'todo',
+                priority: 'medium',
+                dueDate: dueDate,
+                createdAt: new Date().toISOString()
+            };
+            const updatedTasks = [...existingTasks, newTask];
+            setTasks(updatedTasks);
+            storage.saveTasks(updatedTasks);
+        }
     };
 
     const handleSaveMemos = (id: string, newMemos: MemoItem[]) => {

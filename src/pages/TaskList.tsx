@@ -489,18 +489,14 @@ const TaskList: React.FC = () => {
         .tpl-title {
           font-size: 0.875rem;
           font-weight: 700;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
           color: #ffffff;
+          line-height: 1.4;
         }
 
         .tpl-desc {
-          font-size: 0.65rem;
+          font-size: 0.75rem;
           color: var(--text-muted);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          line-height: 1.4;
         }
 
         .empty-hint {
@@ -523,21 +519,22 @@ const TaskList: React.FC = () => {
         }
 
         .template-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
 
         .template-card {
           background-color: var(--bg-card);
           border: 1px solid #334155;
-          padding: 0.75rem 1rem;
-          border-radius: 8px;
+          padding: 1rem 1.25rem;
+          border-radius: 12px;
           display: flex;
           align-items: center;
-          gap: 0.75rem;
+          gap: 1.25rem;
           text-align: left;
           transition: all 0.2s ease;
+          width: 100%;
         }
 
         .template-card:hover {
