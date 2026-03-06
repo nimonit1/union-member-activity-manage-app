@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { Task, TaskCategory, TaskStatus, Priority, TaskDefinition } from '../types';
-import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter, Edit3 } from 'lucide-react';
+import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter, Edit3, ChevronDown, ChevronRight, Layout } from 'lucide-react';
 import MemoEditor from '../components/MemoEditor';
 import { MemoItem } from '../types';
 
@@ -15,6 +15,7 @@ const TaskList: React.FC = () => {
   const [isEditingDate, setIsEditingDate] = useState<string | null>(null);
   const [memoTaskId, setMemoTaskId] = useState<string | null>(null);
   const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
   useEffect(() => {
     setTasks(storage.getTasks());
@@ -188,24 +189,30 @@ const TaskList: React.FC = () => {
         </div>
       </header>
 
-      <section className="templates-section">
-        <h3>クイック作成 (定型タスク)</h3>
-        <div className="template-grid">
-          {visibleTemplates.map(def => (
-            <button key={def.id} className="template-card" onClick={() => createFromTemplate(def.id)}>
-              <div className={`tpl-icon ${def.category}`}>
-                {def.category === 'union_member' && '🔴'}
-                {def.category === 'administrative' && '🔵'}
-                {def.category === 'committee' && '🟢'}
-              </div>
-              <div className="tpl-text">
-                <span className="tpl-title">{def.title}</span>
-                <span className="tpl-desc">{def.description.substring(0, 20)}...</span>
-              </div>
-            </button>
-          ))}
-          {visibleTemplates.length === 0 && <p className="empty-hint">この役職の定型タスクはありません。設定から追加できます。</p>}
+      <section className={`accordion-section templates-section ${isTemplatesOpen ? 'open' : ''}`}>
+        <div className="section-header" onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}>
+          <Layout size={20} />
+          <h3>クイック作成 (定型タスク)</h3>
+          {isTemplatesOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
         </div>
+        {isTemplatesOpen && (
+          <div className="section-content template-grid">
+            {visibleTemplates.map(def => (
+              <button key={def.id} className="template-card" onClick={() => createFromTemplate(def.id)}>
+                <div className={`tpl-icon ${def.category}`}>
+                  {def.category === 'union_member' && '🔴'}
+                  {def.category === 'administrative' && '🔵'}
+                  {def.category === 'committee' && '🟢'}
+                </div>
+                <div className="tpl-text">
+                  <span className="tpl-title">{def.title}</span>
+                  <span className="tpl-desc">{def.description}</span>
+                </div>
+              </button>
+            ))}
+            {visibleTemplates.length === 0 && <p className="empty-hint">この役職の定型タスクはありません。設定から追加できます。</p>}
+          </div>
+        )}
       </section>
 
       <nav className="tab-nav">
@@ -449,6 +456,42 @@ const TaskList: React.FC = () => {
           margin: 0 auto;
         }
 
+        /* アコーディオン共通スタイル */
+        .accordion-section {
+          background-color: var(--bg-card);
+          border: 1px solid #334155;
+          border-radius: 12px;
+          overflow: hidden;
+          margin-bottom: 1rem;
+        }
+
+        .accordion-section .section-header {
+          padding: 1rem 1.25rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          user-select: none;
+        }
+
+        .accordion-section .section-header:hover {
+          background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        .accordion-section .section-header h3 {
+          flex: 1;
+          margin: 0;
+          font-size: 1rem;
+          color: var(--text-main);
+        }
+
+        .accordion-section .section-content {
+          padding: 0 1.25rem 1.25rem;
+          border-top: 1px solid #334155;
+          padding-top: 1.25rem;
+        }
+
         .header-actions {
           display: flex;
           align-items: center;
@@ -500,22 +543,12 @@ const TaskList: React.FC = () => {
         }
 
         .empty-hint {
-          grid-column: 1 / -1;
           font-size: 0.8rem;
           color: var(--text-muted);
           font-style: italic;
           padding: 1rem;
-          border: 1px dashed #334155;
-          border-radius: 8px;
           text-align: center;
-        }
-
-        .templates-section h3 {
-          font-size: 0.875rem;
-          color: var(--text-muted);
-          margin-bottom: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+          width: 100%;
         }
 
         .template-grid {
