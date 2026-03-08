@@ -678,160 +678,125 @@ const SettingsPage: React.FC = () => {
             }
 
             <style>{`
-    .settings - page { max - width: 1000px; margin: 0 auto; display: flex; flex - direction: column; gap: 2rem; }
-                
-                .settings - accordion { display: flex; flex - direction: column; gap: 0.75rem; }
-                .accordion - section { border: 1px solid #334155; border - radius: 12px; background - color: var(--bg - card); overflow: hidden; }
-                .section - header {
-    padding: 1rem 1.5rem; display: flex; align - items: center; gap: 1rem; cursor: pointer;
-    transition: background 0.2s; background - color: rgba(255, 255, 255, 0.02);
-}
-                .section - header:hover { background - color: rgba(255, 255, 255, 0.05); }
-                .accordion - section.section - header:hover {
-    background - color: rgba(255, 255, 255, 0.03);
-}
+                .settings-page { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+                .settings-accordion { display: flex; flex-direction: column; gap: 0.75rem; }
+                .accordion-section { border: 1px solid #334155; border-radius: 12px; background-color: var(--bg-card); overflow: hidden; }
+                .section-header {
+                    padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; cursor: pointer;
+                    transition: background 0.2s; background-color: rgba(255, 255, 255, 0.02);
+                }
+                .section-header:hover { background-color: rgba(255, 255, 255, 0.05); }
+                .accordion-section.section-header:hover {
+                    background-color: rgba(255, 255, 255, 0.03);
+                }
 
-                .accordion - section.danger.section - header h2 {
-    color: #f87171;
-}
+                .accordion-section.danger.section-header h2 {
+                    color: #f87171;
+                }
 
-                .accordion - section.danger.section - header svg {
-    color: #f87171;
-}
-                .section - header h2 { font - size: 1.1rem; flex: 1; margin: 0; }
-                .section - content { padding: 1.5rem; border - top: 1px solid #334155; background - color: var(--bg - dark); }
-                .table - container { overflow - x: auto; width: 100 %; border: 1px solid #334155; border - radius: 8px; background - color: rgba(255, 255, 255, 0.01); }
+                .accordion-section.danger.section-header svg {
+                    color: #f87171;
+                }
+                .section-header h2 { font-size: 1.1rem; flex: 1; margin: 0; }
+                .section-content { padding: 1.5rem; border-top: 1px solid #334155; background-color: var(--bg-dark); }
+                .table-container { overflow-x: auto; width: 100%; border: 1px solid #334155; border-radius: 8px; background-color: rgba(255, 255, 255, 0.01); }
 
                 /* Settings Table */
-                .settings - table { width: 100 %; border - collapse: collapse; font - size: 0.9rem; min - width: 600px; }
-                .settings - table th, .settings - table td { padding: 0.75rem 1rem; border - bottom: 1px solid #334155; text - align: left; vertical - align: middle; }
-                .settings - table th { color: var(--text - muted); font - weight: 600; font - size: 0.8rem; background - color: rgba(255, 255, 255, 0.03); white - space: nowrap; }
-                .sub - text { font - size: 0.75rem; color: var(--text - muted); margin - top: 0.25rem; white - space: normal; line - height: 1.4; }
-                .adding - row { background - color: rgba(59, 130, 246, 0.05); }
-                .adding - row td { border - bottom: none; padding - top: 1rem; }
-                .adding - row.complex td { padding: 1rem; }
+                .settings-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 600px; }
+                .settings-table th, .settings-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; text-align: left; vertical-align: middle; }
+                .settings-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; background-color: rgba(255, 255, 255, 0.03); white-space: nowrap; }
+                .sub-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; white-space: normal; line-height: 1.4; }
+                .adding-row { background-color: rgba(59, 130, 246, 0.05); }
+                .adding-row td { border-bottom: none; padding-top: 1rem; }
+                .adding-row.complex td { padding: 1rem; }
                 
-                .inline - form { display: flex; flex - wrap: wrap; gap: 0.75rem; align - items: center; width: 100 %; }
-                .inline - form input, .inline - form select {
-    background - color: #0f172a; border: 1px solid #334155; color: white;
-    padding: 0.5rem 0.75rem; border - radius: 6px; font - size: 0.85rem; flex: 1; min - width: 140px;
-}
-                .add - inline - btn {
-    background - color: var(--primary); color: white; border: none; padding: 0.5rem 1.25rem;
-    border - radius: 6px; font - weight: 600; display: flex; align - items: center; gap: 0.4rem; white - space: nowrap;
-}
-                .add - inline - btn:disabled { opacity: 0.5; cursor: not - allowed; }
+                .inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; width: 100%; }
+                .inline-form input, .inline-form select {
+                    background-color: #0f172a; border: 1px solid #334155; color: white;
+                    padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; flex: 1; min-width: 140px;
+                }
+                .add-inline-btn {
+                    background-color: var(--primary); color: white; border: none; padding: 0.5rem 1.25rem;
+                    border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;
+                }
+                .add-inline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Responsive Adjustments */
-@media(max - width: 768px) {
-                    .section - content { padding: 1rem 0.75rem; }
-                    .settings - table th, .settings - table td { padding: 0.6rem 0.75rem; }
-                    .inline - form { flex - direction: column; align - items: stretch; }
-                    .inline - form input, .inline - form select { width: 100 %; min - width: auto; }
-                    .add - inline - btn { justify - content: center; }
-                    .export -actions { flex - direction: column; }
-}
+                /* Responsive Adjustments */
+                @media(max-width: 768px) {
+                    .section-content { padding: 1rem 0.75rem; }
+                    .settings-table th, .settings-table td { padding: 0.6rem 0.75rem; }
+                    .inline-form { flex-direction: column; align-items: stretch; }
+                    .inline-form input, .inline-form select { width: 100%; min-width: auto; }
+                    .add-inline-btn { justify-content: center; }
+                    .export-actions { flex-direction: column; }
+                }
 
                 /* Tags & Badges */
-                .prio - tag { font - size: 0.65rem; padding: 2px 6px; border - radius: 4px; font - weight: 700; text - transform: uppercase; }
-                .prio - tag.high { background - color: rgba(239, 68, 68, 0.2); color: var(--danger); }
-                .prio - tag.medium { background - color: rgba(245, 158, 11, 0.2); color: var(--warning); }
-                .prio - tag.low { background - color: rgba(148, 163, 184, 0.2); color: var(--text - muted); }
+                .prio-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+                .prio-tag.high { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); }
+                .prio-tag.medium { background-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
+                .prio-tag.low { background-color: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
                 
-                .role - mini - badges { display: flex; flex - wrap: wrap; gap: 4px; }
-                .mini - badge { font - size: 0.65rem; background - color: #1e293b; border: 1px solid var(--primary); color: var(--primary); padding: 1px 4px; border - radius: 3px; }
-                .timing - text { font - size: 0.85rem; color: var(--warning); font - weight: 600; }
+                .role-mini-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+                .mini-badge { font-size: 0.65rem; background-color: #1e293b; border: 1px solid var(--primary); color: var(--primary); padding: 1px 4px; border-radius: 3px; }
+                .timing-text { font-size: 0.85rem; color: var(--warning); font-weight: 600; }
 
                 /* Personal Prefs Area */
-                .setting - item { display: flex; flex - direction: column; gap: 0.5rem; margin - bottom: 1.5rem; }
-                .setting - item label { font - size: 0.875rem; color: var(--text - muted); font - weight: 600; }
-                .setting - item.checkbox { flex - direction: row; align - items: center; margin - top: 1rem; }
-                .toggle - label { display: flex; align - items: center; gap: 0.75rem; cursor: pointer; font - size: 0.9rem; }
-                .hint { font - size: 0.75rem; color: var(--text - muted); font - style: italic; margin - top: 0.5rem; }
+                .setting-item { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+                .setting-item label { font-size: 0.875rem; color: var(--text-muted); font-weight: 600; }
+                .setting-item.checkbox { flex-direction: row; align-items: center; margin-top: 1rem; }
+                .toggle-label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.9rem; }
+                .hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.5rem; }
 
                 /* Export Area */
-                .export -area { margin - top: 2rem; padding - top: 1.5rem; border - top: 1px dashed #334155; }
-                .export -area h3 { font - size: 0.95rem; margin - bottom: 1rem; color: var(--text - main); }
-                .export -actions { display: flex; gap: 1rem; }
-                .export -btn {
-    background: none; border: 1px solid #475569; color: var(--text - main);
-    padding: 0.6rem 1rem; border - radius: 8px; font - size: 0.85rem; display: flex;
-    align - items: center; gap: 0.6rem; transition: all 0.2s;
-}
-                .export -btn:hover { background - color: #334155; border - color: var(--primary); }
-                .export -btn.all:hover { border - color: var(--warning); }
+                .export-area { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed #334155; }
+                .export-area h3 { font-size: 0.95rem; margin-bottom: 1rem; color: var(--text-main); }
+                .export-actions { display: flex; gap: 1rem; }
+                .export-btn {
+                    background: none; border: 1px solid #475569; color: var(--text-main);
+                    padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; display: flex;
+                    align-items: center; gap: 0.6rem; transition: all 0.2s;
+                }
+                .export-btn:hover { background-color: #334155; border-color: var(--primary); }
+                .export-btn.all:hover { border-color: var(--warning); }
 
                 .actions { display: flex; gap: 0.5rem; }
-                .role - checkboxes { display: grid; grid - template - columns: repeat(auto - fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.75rem; background - color: #0f172a; border - radius: 8px; }
-                .role - cb - label { display: flex; align - items: center; gap: 0.5rem; font - size: 0.85rem; cursor: pointer; padding: 4px; }
+                .role-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.75rem; background-color: #0f172a; border-radius: 8px; }
+                .role-cb-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; padding: 4px; }
 
                 /* Subtasks in Modal */
-                .add - sub - btn { background: none; border: 1px solid var(--primary); color: var(--primary); font - size: 0.75rem; padding: 2px 8px; border - radius: 4px; display: flex; align - items: center; gap: 4px; cursor: pointer; }
-                .add - sub - btn:hover { background - color: rgba(59, 130, 246, 0.1); }
-                .subtask - defs - list { display: flex; flex - direction: column; gap: 0.5rem; margin - top: 0.5rem; }
-                .subtask - def - item { display: flex; align - items: center; gap: 0.5rem; }
-                .subtask - def - item input {
-    flex: 1;
-    padding: 0.4rem 0.6rem; font - size: 0.85rem;
-}
+                .add-sub-btn { background: none; border: 1px solid var(--primary); color: var(--primary); font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+                .add-sub-btn:hover { background-color: rgba(59, 130, 246, 0.1); }
+                .subtask-defs-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+                .subtask-def-item { display: flex; align-items: center; gap: 0.5rem; }
+                .subtask-def-item input {
+                    flex: 1;
+                    padding: 0.4rem 0.6rem; font-size: 0.85rem;
+                }
 
                 /* Danger Zone Styles */
-                .danger - zone {
-    display: flex;
-    flex - direction: column;
-    gap: 1rem;
-}
+                .danger-zone { display: flex; flex-direction: column; gap: 1rem; }
+                .danger-zone h3 { font-size: 1rem; color: #f87171; margin-bottom: 0.25rem; }
+                .danger-zone p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
 
-                .danger - zone h3 {
-    font - size: 1rem;
-    color: #f87171;
-    margin - bottom: 0.25rem;
-}
+                .alert-box {
+                    display: flex; align-items: center; gap: 0.75rem;
+                    padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.8rem; line-height: 1.4;
+                }
+                .alert-box.warning {
+                    background-color: rgba(245, 158, 11, 0.1); color: #fbbf24;
+                    border: 1px solid rgba(245, 158, 11, 0.2);
+                }
 
-                .danger - zone p {
-    font - size: 0.85rem;
-    color: var(--text - muted);
-    line - height: 1.5;
-}
-
-                .alert - box {
-    display: flex;
-    align - items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border - radius: 8px;
-    font - size: 0.8rem;
-    line - height: 1.4;
-}
-
-                .alert - box.warning {
-    background - color: rgba(245, 158, 11, 0.1);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.2);
-}
-
-                .wipe - btn {
-    background - color: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-    border: 1px solid #ef4444;
-    padding: 0.75rem 1rem;
-    border - radius: 8px;
-    font - weight: 600;
-    display: flex;
-    align - items: center;
-    justify - content: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin - top: 0.5rem;
-}
-
-                .wipe - btn:hover {
-    background - color: #ef4444;
-    color: white;
-}
-                .order - num { font - size: 0.75rem; color: var(--text - muted); width: 20px; text - align: center; }
-`}</style>
+                .wipe-btn {
+                    background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444;
+                    padding: 0.75rem 1rem; border-radius: 8px; font-weight: 600;
+                    display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+                    cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
+                }
+                .wipe-btn:hover { background-color: #ef4444; color: white; }
+                .order-num { font-size: 0.75rem; color: var(--text-muted); width: 20px; text-align: center; }
+            `}</style>
         </div >
     );
 };
