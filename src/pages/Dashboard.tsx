@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { Task, ScheduleEvent } from '../types';
-import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet } from 'lucide-react';
+import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
@@ -57,6 +57,12 @@ const Dashboard: React.FC = () => {
     .filter(e => e.date.startsWith(currentMonth) && e.expense)
     .reduce((sum, e) => sum + (e.expense?.totalAmount || 0), 0);
 
+  // 期限アラート対象の抽出 (未完了)
+  const urgentTasks = visibleTasks.filter(t => {
+    if (t.status === 'completed' || !t.dueDate) return false;
+    return t.dueDate <= today;
+  });
+
   return (
     <div className="dashboard">
       <header className="page-header">
@@ -70,6 +76,19 @@ const Dashboard: React.FC = () => {
           </div>
         )}
       </header>
+
+      {urgentTasks.length > 0 && (
+        <div className="urgent-banner" onClick={() => navigate('/tasks')}>
+          <div className="banner-icon">
+            <Bell size={20} />
+          </div>
+          <div className="banner-content">
+            <span className="banner-title">期限間近・超過のタスクがあります ({urgentTasks.length}件)</span>
+            <span className="banner-desc">本日が期限、または期限を過ぎている未完了タスクを確認してください。</span>
+          </div>
+          <ChevronRight size={20} />
+        </div>
+      )}
 
       <div className="summary-grid">
         <div className="summary-card">
@@ -244,13 +263,56 @@ const Dashboard: React.FC = () => {
         }
 
         .role-tag {
-          font-size: 0.75rem;
-          color: var(--primary);
+          padding: 0.5rem 1rem;
           background-color: rgba(59, 130, 246, 0.1);
-          padding: 0.4rem 1rem;
+          color: var(--primary);
           border-radius: 20px;
-          border: 1px solid var(--primary);
+          font-size: 0.8rem;
+          font-weight: 600;
+        }
+
+        .urgent-banner {
+          background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+          color: white;
+          padding: 1rem 1.25rem;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          cursor: pointer;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+          transition: transform 0.2s ease;
+        }
+
+        .urgent-banner:hover {
+          transform: translateY(-2px);
+        }
+
+        .banner-icon {
+          background: rgba(255, 255, 255, 0.2);
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .banner-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .banner-title {
           font-weight: 700;
+          font-size: 1rem;
+        }
+
+        .banner-desc {
+          font-size: 0.8rem;
+          opacity: 0.9;
         }
 
         .section-header {
