@@ -3,7 +3,7 @@ import { AppState } from '../types';
 /**
  * 現在のデータ構造のバージョン
  */
-export const CURRENT_VERSION = 7;
+export const CURRENT_VERSION = 8;
 
 /**
  * データを最新の構造に変換する
@@ -45,6 +45,10 @@ export const migrateData = (data: any): AppState => {
         migratedData = migrateToV7(migratedData);
     }
 
+    if (version < 8) {
+        migratedData = migrateToV8(migratedData);
+    }
+
     // 最終的なバージョン情報を付与
     migratedData.version = CURRENT_VERSION;
 
@@ -63,6 +67,21 @@ const migrateToV7 = (data: any): any => {
             status: e.status || 'todo'
         })),
         version: 7
+    };
+};
+
+/**
+ * バージョン7から8への変換
+ * メモ（MemoItem）にタイトル（title）を追加
+ */
+const migrateToV8 = (data: any): any => {
+    return {
+        ...data,
+        memos: (data.memos || []).map((m: any) => ({
+            ...m,
+            title: m.title || ''
+        })),
+        version: 8
     };
 };
 

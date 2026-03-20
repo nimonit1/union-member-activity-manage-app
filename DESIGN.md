@@ -9,6 +9,7 @@
 ### 1. プレゼンテーション層 (UI)
 - **Layout / Header / BottomNav**: 画面の骨格とモバイル対応ナビゲーション。
 - **Dashboard / TaskList / Calendar**: 各機能のメイン画面。
+- **MemoEditor**: 高機能リッチテキスト（HTML）と音声に対応した統合エディタ。
 - **SyncStatus**: Google連携の認証・同期状態を管理するUI。
 
 ### 2. ビジネスロジック / ユーティリティ層
@@ -81,7 +82,7 @@ classDiagram
 - `tasks`: タスクの配列（役職に応じたフィルタリング、サブタスク対応。メモは外部参照）。
 - `events`: スケジュールの配列（会議体からのインポート対応。`status` による進捗管理。メモは外部参照）。
 - `travelExpenses`: 独立した旅費精算データの配列。
-- `memos`: グローバルに集約されたメモデータの配列（IDによる紐付け）。
+- `memos`: グローバルに集約されたメモデータの配列（HTML 形式または音声 ID を保持）。
 - `memoTemplates`: メモ作成時に利用する定型文テンプレートの配列。
 - `roles`: 役職定義の配列。
 - `TaskCategory`: `'union_member'` (組合員), `'administrative'` (事務), `'committee'` (委員)

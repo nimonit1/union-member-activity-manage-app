@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { MemoItem, ScheduleEvent, Task } from '../types';
-import { Plus, Type, Edit3, Mic, Trash2, Link as LinkIcon, Calendar, CheckSquare, Search, X } from 'lucide-react';
+import { Plus, Type, Mic, Trash2, Link as LinkIcon, Calendar, CheckSquare, Search } from 'lucide-react';
 import MemoEditor from '../components/MemoEditor';
 
 const MemoList: React.FC = () => {
@@ -19,9 +19,25 @@ const MemoList: React.FC = () => {
         setTasks(storage.getTasks());
     }, []);
 
+    const stripHtml = (html: string) => {
+        if (!html) return '';
+        // タグを除去し、HTMLエンティティを最小限デコード
+        return html
+            .replace(/<[^>]*>?/gm, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&');
+    };
+
     const saveMemos = (newMemos: MemoItem[]) => {
         setMemos(newMemos);
         storage.saveMemos(newMemos);
+    };
+
+    const handleCloseEditor = () => {
+        setEditingMemoId(null);
+        setShowEditor(false);
     };
 
     const handleDelete = (id: string) => {
@@ -42,6 +58,7 @@ const MemoList: React.FC = () => {
     };
 
     const filteredMemos = memos.filter(m =>
+        (m.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
         m.content.toLowerCase().includes(searchQuery.toLowerCase())
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -64,7 +81,7 @@ const MemoList: React.FC = () => {
                         <Search size={18} />
                         <input
                             type="text"
-                            placeholder="メモを検索..."
+                            placeholder="タイトルや内容で検索..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -77,7 +94,7 @@ const MemoList: React.FC = () => {
 
             <div className="memo-grid">
                 {filteredMemos.map(memo => (
-                    <div key={memo.id} className="memo-card">
+                    <div key={memo.id} className="memo-card" onClick={() => memo.type === 'text' && setEditingMemoId(memo.id)}>
                         <div className="memo-card-header">
                             <span className="memo-type">
                                 {memo.type === 'text' && <Type size={14} />}
@@ -85,28 +102,21 @@ const MemoList: React.FC = () => {
                                 {memo.type === 'text' ? 'テキスト' : '音声'}
                             </span>
                             <span className="memo-date">{new Date(memo.createdAt).toLocaleDateString()}</span>
-                            <button className="delete-btn" onClick={() => handleDelete(memo.id)}><Trash2 size={14} /></button>
+                            <button className="delete-btn" onClick={(e) => { e.stopPropagation(); handleDelete(memo.id); }}><Trash2 size={14} /></button>
                         </div>
-                        <div className="memo-card-body" onClick={() => memo.type === 'text' && setEditingMemoId(memo.id)}>
+                        <div className="memo-card-body">
+                            <h3 className="memo-title">{memo.title || '(無題)'}</h3>
                             {memo.type === 'text' && (
-                                <div className="text-body">
-                                    <p>{memo.content}</p>
-                                    <div className="edit-hint"><Edit3 size={10} /> タップして編集</div>
-                                </div>
+                                <p className="memo-preview">{stripHtml(memo.content)}</p>
                             )}
-                            {memo.type === 'voice' && <div className="voice-placeholder">音声メモ (再生可能)</div>}
+                            {memo.type === 'voice' && <div className="voice-badge">音声メモ</div>}
                         </div>
                         <div className="memo-card-footer">
                             <div className="link-status">
-                                {getLinkedName(memo) ? (
+                                {getLinkedName(memo) && (
                                     <span className="linked-badge">
                                         <LinkIcon size={12} /> {getLinkedName(memo)}
-                                        <button className="unlink-btn" onClick={() => handleLink(memo.id, undefined, undefined)}><X size={10} /></button>
                                     </span>
-                                ) : (
-                                    <button className="link-btn" onClick={() => setLinkingMemoId(memo.id)}>
-                                        <LinkIcon size={12} /> スケジュールに紐づける
-                                    </button>
                                 )}
                             </div>
                         </div>
@@ -117,15 +127,9 @@ const MemoList: React.FC = () => {
             {(showEditor || editingMemoId) && (
                 <MemoEditor
                     memos={memos}
-                    onSave={(newMemos) => {
-                        saveMemos(newMemos);
-                        setEditingMemoId(null);
-                        setShowEditor(false);
-                    }}
-                    onClose={() => {
-                        setEditingMemoId(null);
-                        setShowEditor(false);
-                    }}
+                    initialMemoId={editingMemoId}
+                    onSave={(newMemos) => saveMemos(newMemos)}
+                    onClose={handleCloseEditor}
                 />
             )}
 
@@ -155,21 +159,24 @@ const MemoList: React.FC = () => {
             <style>{`
                 .memo-list-page { display: flex; flex-direction: column; gap: 2rem; max-width: 1000px; margin: 0 auto; }
                 .search-bar { display: flex; align-items: center; gap: 0.5rem; background: #1e293b; padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid #334155; }
-                .search-bar input { background: none; border: none; color: white; outline: none; width: 200px; }
+                .search-bar input { background: none; border: none; color: white; outline: none; width: 250px; }
                 
-                .memo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-                .memo-card { background: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-                .memo-card-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted); }
+                .memo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+                .memo-card { background: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; cursor: pointer; transition: all 0.2s; }
+                .memo-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+                
+                .memo-card-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: var(--text-muted); }
                 .memo-type { display: flex; align-items: center; gap: 0.4rem; }
-                .memo-card-body { flex: 1; overflow: hidden; cursor: pointer; }
-                .text-body { position: relative; }
-                .edit-hint { position: absolute; bottom: -1rem; right: 0; font-size: 0.6rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
-                .memo-card-body:hover .edit-hint { opacity: 1; }
-                .memo-card-body p { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
                 
-                .linked-badge { background: rgba(59,130,246,0.1); color: var(--primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; display: flex; align-items: center; gap: 0.4rem; }
-                .link-btn { background: none; border: 1px dashed #334155; color: var(--text-muted); padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; width: 100%; }
-                .unlink-btn { background: none; border: none; color: var(--text-muted); padding: 2px; }
+                .memo-card-body { flex: 1; overflow: hidden; }
+                .memo-title { margin: 0; font-size: 1rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .memo-preview { margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4; }
+                .voice-badge { font-size: 0.7rem; color: var(--primary); font-weight: 600; margin-top: 0.25rem; }
+                
+                .delete-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
+                .delete-btn:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+
+                .linked-badge { background: rgba(59,130,246,0.1); color: var(--primary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 
                 .link-modal { max-width: 400px; max-height: 80vh; overflow-y: auto; }
                 .link-targets { display: flex; flex-direction: column; gap: 0.5rem; margin: 1rem 0; }

@@ -51,6 +51,7 @@ export type MemoType = 'text' | 'handwriting' | 'voice';
 export interface MemoItem {
     id: string;
     type: MemoType;
+    title?: string; // メモのタイトル
     content: string; // textなら文字列、handwritingならJSON文字列、voiceならIndexedDBのID
     createdAt: string;
     linkedEventId?: string; // スケジュールへの紐付け
