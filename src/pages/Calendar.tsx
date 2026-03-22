@@ -101,8 +101,10 @@ const CalendarPage: React.FC = () => {
 
             // 会議体定義に基づく予定かチェック
             const def = mtgDefs.find(d => d.name === e.title);
-            if (def) {
-                return def.roleIds.includes(filterRoleId);
+            if (def && filterRoleId) {
+                if (def.roleIds && def.roleIds.length > 0) {
+                    return def.roleIds.includes(filterRoleId);
+                }
             }
             return true;
         });
@@ -118,8 +120,10 @@ const CalendarPage: React.FC = () => {
             // タスク管理側のロジックと同様
             const storageDefs = storage.getTaskDefinitions();
             const def = storageDefs.find((d: any) => d.title === t.title);
-            if (def) {
-                return def.roleIds.includes(filterRoleId);
+            if (def && filterRoleId) {
+                if (def.roleIds && def.roleIds.length > 0) {
+                    return def.roleIds.includes(filterRoleId);
+                }
             }
             return true;
         });
@@ -164,10 +168,13 @@ const CalendarPage: React.FC = () => {
     const checkAndCreateExpenseTask = (eventDate: string, category: string) => {
         if (category !== 'meeting' && category !== 'conference') return;
 
-        // 1週間後の日付を計算
+        // 1週間後の日付を計算（ローカル時刻ベース）
         const d = new Date(eventDate);
         d.setDate(d.getDate() + 7);
-        const dueDate = d.toISOString().split('T')[0];
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const dueDate = `${yyyy}-${mm}-${dd}`;
 
         // 重複チェック
         const existingTasks = storage.getTasks();
