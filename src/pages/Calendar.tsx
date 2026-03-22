@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { ScheduleEvent, Task, MeetingDefinition, Role } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3, LayoutList, Calendar } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
 import { MemoItem, TravelExpenseItem } from '../types';
@@ -13,7 +13,7 @@ const CalendarPage: React.FC = () => {
     const [currentRoleId, setCurrentRoleId] = useState('');
     const [showAllItems, setShowAllItems] = useState(false);
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string | null>(new Date().toLocaleDateString('sv'));
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
     const [editFormData, setEditFormData] = useState<Partial<ScheduleEvent>>({});
     const [showMtgModal, setShowMtgModal] = useState(false);
@@ -26,6 +26,7 @@ const CalendarPage: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]); // 追加: 役職リスト
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null); // 追加: タスク編集用
     const [taskEditFormData, setTaskEditFormData] = useState<Partial<Task>>({}); // 追加: タスク編集データ
+    const [viewMode, setViewMode] = useState<'list' | 'timetable'>('list'); // 追加: 表示モード
 
     useEffect(() => {
         setEvents(storage.getEvents());
@@ -127,6 +128,74 @@ const CalendarPage: React.FC = () => {
             }
             return true;
         });
+    };
+
+    const renderTimetable = () => {
+        const dateEvents = getFilteredEvents(selectedDate!);
+        const dateTasks = getFilteredTasks(selectedDate!);
+        
+        // 時間指定のある予定とない予定（終日）を分ける
+        const timedEvents = dateEvents.filter(e => e.startTime && e.endTime);
+        const allDayEvents = dateEvents.filter(e => !e.startTime || !e.endTime);
+        
+        const timeToMinutes = (timeStr: string) => {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        return (
+            <div className="timetable-container">
+                {(allDayEvents.length > 0 || dateTasks.length > 0) && (
+                    <div className="timetable-all-day">
+                        <span className="all-day-label">終日 / 時間指定なし</span>
+                        <div className="all-day-items">
+                            {allDayEvents.map(e => (
+                                <div key={e.id} className={`event-item-mini ${e.category} ${e.status === 'completed' ? 'completed' : ''}`} onClick={() => { setEditingEventId(e.id); setEditFormData({ ...e }); }}>
+                                    <span className="title">{e.title}</span>
+                                </div>
+                            ))}
+                            {dateTasks.map(t => (
+                                <div key={t.id} className={`task-item-mini ${t.status === 'completed' ? 'completed' : ''}`} onClick={() => { setEditingTaskId(t.id); setTaskEditFormData({ ...t }); }}>
+                                    <span className="title">{t.title}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
+                <div className="timetable-grid">
+                    <div className="time-labels">
+                        {Array.from({ length: 25 }).map((_, i) => (
+                            <div key={i} className="time-label" style={{ top: `${i * 50}px` }}>
+                                {i}:00
+                            </div>
+                        ))}
+                    </div>
+                    {Array.from({ length: 25 }).map((_, i) => (
+                        <div key={i} className="time-grid-line" style={{ top: `${i * 50}px` }}></div>
+                    ))}
+                    
+                    {timedEvents.map(e => {
+                        const startMin = timeToMinutes(e.startTime!);
+                        const endMin = timeToMinutes(e.endTime!);
+                        const top = (startMin / 60) * 50;
+                        const height = ((endMin - startMin) / 60) * 50;
+                        
+                        return (
+                            <div 
+                                key={e.id} 
+                                className={`timetable-event ${e.category} ${e.status === 'completed' ? 'completed' : ''}`}
+                                style={{ top: `${top}px`, height: `${Math.max(height, 35)}px` }}
+                                onClick={() => { setEditingEventId(e.id); setEditFormData({ ...e }); }}
+                            >
+                                <span className="title">{e.title}</span>
+                                <span className="time"><Clock size={10} /> {e.startTime} - {e.endTime}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
     const handleAddEvent = () => {
@@ -409,6 +478,22 @@ const CalendarPage: React.FC = () => {
                                     <div className="section-header">
                                         <h3>{selectedDate} の予定・タスク</h3>
                                         <div className="add-actions">
+                                            <div className="view-mode-toggle">
+                                                <button 
+                                                    className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
+                                                    onClick={() => setViewMode('list')}
+                                                    title="リスト表示"
+                                                >
+                                                    <LayoutList size={16} />
+                                                </button>
+                                                <button 
+                                                    className={`view-mode-btn ${viewMode === 'timetable' ? 'active' : ''}`}
+                                                    onClick={() => setViewMode('timetable')}
+                                                    title="タイムテーブル表示"
+                                                >
+                                                    <Calendar size={16} />
+                                                </button>
+                                            </div>
                                             <button className="small-primary-btn" onClick={() => setShowMtgModal(true)}>
                                                 <Shield size={16} /> 会議体
                                             </button>
@@ -418,7 +503,8 @@ const CalendarPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="event-list">
+                                    {viewMode === 'timetable' ? renderTimetable() : (
+                                        <div className="event-list">
                                         {getFilteredEvents(selectedDate).map(event => (
                                             <div key={event.id} className="event-item-container">
                                                 {editingEventId === event.id ? (
@@ -577,14 +663,15 @@ const CalendarPage: React.FC = () => {
                                             <div className="empty-state">この日の予定・タスクはありません。</div>
                                         )}
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="empty-state-panel">日付を選択してください。</div>
-                    )}
-                </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="empty-state-panel">日付を選択してください。</div>
+                )}
             </div>
+        </div>
 
             {memoEventId && (
                 <MemoEditor
@@ -742,6 +829,38 @@ const CalendarPage: React.FC = () => {
         .delete-btn-action:hover { background-color: var(--danger); color: white; }
         .cancel-btn { background: none; border: 1px solid #334155; color: var(--text-muted); padding: 0.6rem; border-radius: 6px; font-size: 0.8rem; }
         
+        /* Timetable Styles */
+        .view-mode-toggle { display: flex; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 2px; }
+        .view-mode-btn { background: none; border: none; color: var(--text-muted); padding: 4px 12px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+        .view-mode-btn.active { background-color: var(--primary); color: white; }
+        
+        .timetable-container { position: relative; margin-top: 1rem; border-top: 1px solid #334155; padding-top: 1rem; overflow-y: auto; max-height: 600px; background: rgba(0,0,0,0.1); border-radius: 8px; }
+        .timetable-all-day { margin: 0 1rem 1rem 1rem; border-bottom: 1px dashed #334155; padding-bottom: 0.5rem; }
+        .all-day-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block; font-weight: 700; }
+        .all-day-items { display: flex; flex-direction: column; gap: 4px; }
+        
+        .timetable-grid { position: relative; min-height: 1200px; margin-left: 55px; border-left: 1px solid #334155; margin-right: 1rem; }
+        .time-labels { position: absolute; left: -55px; top: 0; bottom: 0; width: 50px; }
+        .time-label { position: absolute; left: 0; width: 100%; font-size: 0.7rem; color: var(--text-muted); transform: translateY(-50%); text-align: right; padding-right: 8px; }
+        .time-grid-line { position: absolute; left: 0; right: 0; height: 1px; background-color: rgba(255, 255, 255, 0.05); }
+        
+        .timetable-event { position: absolute; right: 4px; border-radius: 6px; padding: 6px 10px; font-size: 0.75rem; overflow: hidden; border-left: 4px solid transparent; backdrop-filter: blur(8px); transition: all 0.2s; z-index: 10; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .timetable-event:hover { z-index: 20; transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,0,0,0.4); border-left-width: 6px; }
+        .timetable-event .title { font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+        .timetable-event .time { font-size: 0.65rem; opacity: 0.8; display: flex; align-items: center; gap: 4px; }
+        
+        .timetable-event.union_member { background-color: rgba(239, 68, 68, 0.2); border-left-color: #ef4444; color: #fecaca; }
+        .timetable-event.administrative { background-color: rgba(59, 130, 246, 0.2); border-left-color: #3b82f6; color: #dbeafe; }
+        .timetable-event.committee { background-color: rgba(34, 197, 94, 0.2); border-left-color: #22c55e; color: #dcfce7; }
+        .timetable-event.completed { opacity: 0.5; text-decoration: line-through; filter: grayscale(0.5); }
+
+        .event-item-mini, .task-item-mini { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; border-left: 3px solid transparent; background: rgba(255,255,255,0.05); }
+        .event-item-mini.union_member { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .event-item-mini.administrative { border-left-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .event-item-mini.committee { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .task-item-mini { border-left-color: var(--primary); background: rgba(59, 130, 246, 0.1); }
+        .event-item-mini.completed, .task-item-mini.completed { opacity: 0.5; text-decoration: line-through; }
+
         @media (max-width: 768px) {
           .calendar-layout { grid-template-columns: 1fr; }
           .calendar-day { height: 80px; }
@@ -754,6 +873,8 @@ const CalendarPage: React.FC = () => {
           .calendar-day { height: 60px; font-size: 0.75rem; }
           .weekday-label { padding: 0.5rem; font-size: 0.7rem; }
           .day-number { font-size: 0.8rem; }
+          .timetable-grid { margin-left: 45px; }
+          .time-labels { left: -45px; width: 40px; }
         }
       `}</style>
         </div >
