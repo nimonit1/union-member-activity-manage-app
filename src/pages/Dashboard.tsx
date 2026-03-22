@@ -50,11 +50,11 @@ const Dashboard: React.FC = () => {
   const unionTasks = visibleTasks.filter(t => t.category === 'union_member');
   const lowResponseTasks = unionTasks.filter(t => t.responseRate !== undefined && t.responseRate < 50 && t.status !== 'completed');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv');
   const todayEvents = visibleEvents.filter(e => e.date === today);
 
   // 当月の旅費合計 (予定紐付け + 独立データ)
-  const currentMonth = new Date().toISOString().substring(0, 7);
+  const currentMonth = new Date().toLocaleDateString('sv').substring(0, 7);
   
   const expenseFromEvents = visibleEvents
     .filter(e => e.date.startsWith(currentMonth) && e.expense)

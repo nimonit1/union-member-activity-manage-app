@@ -305,7 +305,7 @@ const CalendarPage: React.FC = () => {
                                 return (
                                     <div
                                         key={idx}
-                                        className={`calendar-day ${day === null ? 'empty' : ''} ${day && getDayString(day) === selectedDate ? 'selected' : ''} ${day && getDayString(day) === new Date().toISOString().split('T')[0] ? 'today' : ''}`}
+                                        className={`calendar-day ${day === null ? 'empty' : ''} ${day && getDayString(day) === selectedDate ? 'selected' : ''} ${day && getDayString(day) === new Date().toLocaleDateString('sv') ? 'today' : ''}`}
                                         onClick={() => day && setSelectedDate(getDayString(day))}
                                     >
                                         {day && (

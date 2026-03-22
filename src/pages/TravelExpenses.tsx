@@ -23,7 +23,7 @@ const TravelExpenses: React.FC = () => {
         const newItem: Partial<TravelExpenseItem> = {
             id: Date.now().toString(),
             title: '',
-            date: new Date().toISOString().split('T')[0],
+            date: new Date().toLocaleDateString('sv'),
             routes: [],
             totalAmount: 0
         };
