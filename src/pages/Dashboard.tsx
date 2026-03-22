@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { Task, ScheduleEvent } from '../types';
+import { Task, ScheduleEvent, TravelExpenseItem } from '../types';
 import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [travelExpenses, setTravelExpenses] = useState<TravelExpenseItem[]>([]);
   const [currentRoleId, setCurrentRoleId] = useState('');
   const [showAllItems, setShowAllItems] = useState(false);
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     setTasks(storage.getTasks());
     setEvents(storage.getEvents());
+    setTravelExpenses(storage.getTravelExpenses());
     setCurrentRoleId(storage.getCurrentRoleId());
     setShowAllItems(storage.getShowAllItems());
   }, []);
@@ -51,11 +53,18 @@ const Dashboard: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
   const todayEvents = visibleEvents.filter(e => e.date === today);
 
-  // 当月の旅費合計
+  // 当月の旅費合計 (予定紐付け + 独立データ)
   const currentMonth = new Date().toISOString().substring(0, 7);
-  const monthlyExpense = visibleEvents
+  
+  const expenseFromEvents = visibleEvents
     .filter(e => e.date.startsWith(currentMonth) && e.expense)
     .reduce((sum, e) => sum + (e.expense?.totalAmount || 0), 0);
+
+  const expenseFromStandalone = travelExpenses
+    .filter(te => te.date.startsWith(currentMonth))
+    .reduce((sum, te) => sum + (te.totalAmount || 0), 0);
+
+  const monthlyExpense = expenseFromEvents + expenseFromStandalone;
 
   // 期限アラート対象の抽出 (未完了)
   const urgentTasks = visibleTasks.filter(t => {
