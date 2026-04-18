@@ -87,7 +87,8 @@ const TaskList: React.FC = () => {
       status: 'todo',
       priority: def.priority,
       createdAt: new Date().toISOString(),
-      responseRate: (def.category === 'union_member') ? 0 : undefined,
+      trackResponseRate: def.trackResponseRate,
+      responseRate: (def.trackResponseRate) ? 0 : undefined,
       subtasks: (def.subtasks || []).map(s => ({
         id: `sub-${Math.random().toString(36).substr(2, 9)}`,
         title: s.title,
@@ -147,6 +148,7 @@ const TaskList: React.FC = () => {
       title: '',
       description: '',
       dueDate: '',
+      trackResponseRate: activeTab === 'union_member',
       responseRate: activeTab === 'union_member' ? 0 : undefined
     });
   };
@@ -263,8 +265,8 @@ const TaskList: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {task.category === 'union_member' && task.status !== 'completed' && (
+              
+              {task.trackResponseRate && task.status !== 'completed' && (
                 <div className="response-rate-area">
                   <div className="rate-header">
                     <span>回答率の更新</span>
@@ -402,6 +404,22 @@ const TaskList: React.FC = () => {
                     </select>
                   </div>
                 </div>
+                {editingTask.category === 'union_member' && (
+                  <div className="form-group checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={editingTask.trackResponseRate || false}
+                        onChange={e => setEditingTask({ 
+                          ...editingTask, 
+                          trackResponseRate: e.target.checked,
+                          responseRate: e.target.checked ? (editingTask.responseRate || 0) : undefined
+                        })}
+                      />
+                      回答率を記録してフォローする
+                    </label>
+                  </div>
+                )}
                 <div className="form-row">
                   <div className="form-group">
                     <label>期限</label>
@@ -411,7 +429,7 @@ const TaskList: React.FC = () => {
                       onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })}
                     />
                   </div>
-                  {editingTask.category === 'union_member' && (
+                  {editingTask.trackResponseRate && (
                     <div className="form-group">
                       <label>現在の回答率 (%)</label>
                       <input
@@ -795,6 +813,19 @@ const TaskList: React.FC = () => {
 
         .rate-btn:hover { background-color: #475569; }
         .rate-btn.active { background-color: var(--primary); font-weight: 700; }
+
+        .form-group.checkbox-group {
+          margin-bottom: 1rem;
+        }
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          cursor: pointer;
+          color: var(--text-main);
+        }
 
         .task-footer {
           display: flex;

@@ -47,8 +47,7 @@ const Dashboard: React.FC = () => {
 
   // 集計ロジック
   const completedTasks = visibleTasks.filter(t => t.status === 'completed');
-  const unionTasks = visibleTasks.filter(t => t.category === 'union_member');
-  const lowResponseTasks = unionTasks.filter(t => t.responseRate !== undefined && t.responseRate < 50 && t.status !== 'completed');
+  const lowResponseTasks = visibleTasks.filter(t => t.trackResponseRate && (t.responseRate || 0) < 50 && t.status !== 'completed');
 
   const today = new Date().toLocaleDateString('sv');
   const todayEvents = visibleEvents.filter(e => e.date === today);

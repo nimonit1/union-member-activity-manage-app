@@ -22,7 +22,7 @@ const SettingsPage: React.FC = () => {
 
     // Inline adding states
     const [newRoleName, setNewRoleName] = useState('');
-    const [newTaskDef, setNewTaskDef] = useState<Partial<TaskDefinition>>({ title: '', category: 'union_member', priority: 'medium', roleIds: [] });
+    const [newTaskDef, setNewTaskDef] = useState<Partial<TaskDefinition>>({ title: '', category: 'union_member', priority: 'medium', roleIds: [], trackResponseRate: true });
     const [newMtgDef, setNewMtgDef] = useState<Partial<MeetingDefinition>>({ name: '', content: '', timing: '', roleIds: [] });
 
     // Editing states (keeping modals for complex edits, but using table for list)
@@ -124,12 +124,13 @@ const SettingsPage: React.FC = () => {
             description: newTaskDef.description || '',
             category: newTaskDef.category as any || 'union_member',
             priority: newTaskDef.priority as any || 'medium',
-            roleIds: newTaskDef.roleIds || []
+            roleIds: newTaskDef.roleIds || [],
+            trackResponseRate: newTaskDef.trackResponseRate !== undefined ? newTaskDef.trackResponseRate : (newTaskDef.category === 'union_member')
         };
         const newList = [...taskDefs, def];
         setTaskDefs(newList);
         saveAll(roles, newList);
-        setNewTaskDef({ title: '', category: 'union_member', priority: 'medium', roleIds: [] });
+        setNewTaskDef({ title: '', category: 'union_member', priority: 'medium', roleIds: [], trackResponseRate: true });
     };
 
     const handleSaveTaskDef = (e: React.FormEvent) => {
@@ -402,7 +403,7 @@ const SettingsPage: React.FC = () => {
                                                         onChange={e => setNewTaskDef({ ...newTaskDef, title: e.target.value })}
                                                         placeholder="新しい定型タスク名..."
                                                     />
-                                                    <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any })}>
+                                                    <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any, trackResponseRate: e.target.value === 'union_member' })}>
                                                         <option value="union_member">🔴 組合員</option>
                                                         <option value="administrative">🔵 事務</option>
                                                         <option value="committee">🟢 委員</option>
@@ -563,7 +564,7 @@ const SettingsPage: React.FC = () => {
                             <div className="form-row">
                                 <div className="form-group">
                                     <label>カテゴリ</label>
-                                    <select value={editingTaskDef.category} onChange={e => setEditingTaskDef({ ...editingTaskDef, category: e.target.value as any })}>
+                                    <select value={editingTaskDef.category} onChange={e => setEditingTaskDef({ ...editingTaskDef, category: e.target.value as any, trackResponseRate: e.target.value === 'union_member' })}>
                                         <option value="union_member">🔴 組合員関連</option>
                                         <option value="administrative">🔵 事務タスク</option>
                                         <option value="committee">🟢 委員タスク</option>
@@ -578,6 +579,18 @@ const SettingsPage: React.FC = () => {
                                     </select>
                                 </div>
                             </div>
+                            {editingTaskDef.category === 'union_member' && (
+                                <div className="form-group checkbox-group" style={{ marginBottom: '1.5rem' }}>
+                                    <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={editingTaskDef.trackResponseRate || false}
+                                            onChange={e => setEditingTaskDef({ ...editingTaskDef, trackResponseRate: e.target.checked })}
+                                        />
+                                        回答率を記録してフォローする
+                                    </label>
+                                </div>
+                            )}
                             <div className="form-group">
                                 <label>担当する役職 (複数選択可)</label>
                                 <div className="role-checkboxes">

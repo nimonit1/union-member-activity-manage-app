@@ -3,7 +3,7 @@ import { AppState } from '../types';
 /**
  * 現在のデータ構造のバージョン
  */
-export const CURRENT_VERSION = 8;
+export const CURRENT_VERSION = 9;
 
 /**
  * データを最新の構造に変換する
@@ -49,6 +49,10 @@ export const migrateData = (data: any): AppState => {
         migratedData = migrateToV8(migratedData);
     }
 
+    if (version < 9) {
+        migratedData = migrateToV9(migratedData);
+    }
+
     // 最終的なバージョン情報を付与
     migratedData.version = CURRENT_VERSION;
 
@@ -82,6 +86,25 @@ const migrateToV8 = (data: any): any => {
             title: m.title || ''
         })),
         version: 8
+    };
+};
+
+/**
+ * バージョン8から9への変換
+ * 回答率を記録するかどうかのフラグを追加（組合員カテゴリは初期値true）
+ */
+const migrateToV9 = (data: any): any => {
+    return {
+        ...data,
+        tasks: (data.tasks || []).map((t: any) => ({
+            ...t,
+            trackResponseRate: t.trackResponseRate !== undefined ? t.trackResponseRate : (t.category === 'union_member')
+        })),
+        taskDefinitions: (data.taskDefinitions || []).map((d: any) => ({
+            ...d,
+            trackResponseRate: d.trackResponseRate !== undefined ? d.trackResponseRate : (d.category === 'union_member')
+        })),
+        version: 9
     };
 };
 

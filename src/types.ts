@@ -24,6 +24,7 @@ export interface Task {
     priority: Priority;
     dueDate?: string;
     responseRate?: number; // 0 to 100, 組合員関連タスクのみ
+    trackResponseRate?: boolean; // 回答率を記録するかどうか
     createdAt: string;
     subtasks?: Subtask[];
 }
@@ -98,6 +99,7 @@ export interface TaskDefinition {
     description: string;
     category: TaskCategory;
     priority: Priority;
+    trackResponseRate?: boolean; // 回答率を記録するかどうか
     roleIds: string[]; // 紐付ける役職IDの配列
     subtasks?: { id: string; title: string; order: number }[];
 }

@@ -78,15 +78,15 @@ classDiagram
 
 全てのデータは一つのJSONオブジェクトとして管理されます。
 
-- `version`: データ構造のバージョン（現在: 7）。
-- `tasks`: タスクの配列（役職に応じたフィルタリング、サブタスク対応。メモは外部参照）。
+- `version`: データ構造のバージョン（現在: 9）。
+- `tasks`: タスクの配列（役職に応じたフィルタリング、サブタスク対応、回答率記録フラグ `trackResponseRate` 追加）。
 - `events`: スケジュールの配列（会議体からのインポート対応。`status` による進捗管理。メモは外部参照）。
 - `travelExpenses`: 独立した旅費精算データの配列。
 - `memos`: グローバルに集約されたメモデータの配列（HTML 形式または音声 ID を保持）。
 - `memoTemplates`: メモ作成時に利用する定型文テンプレートの配列。
 - `roles`: 役職定義の配列。
 - `TaskCategory`: `'union_member'` (組合員), `'administrative'` (事務), `'committee'` (委員)
-- `taskDefinitions`: 定型タスク（テンプレート）の定義配列。
+- `taskDefinitions`: 定型タスク（テンプレート）の定義配列（`trackResponseRate` 追加）。
 - `meetingDefinitions`: 会議体（定例会議）の定義配列。
 - `currentRoleId`: ユーザー自身の現在の役職ID。
 - `showAllItems`: 全表示モードのフラグ。

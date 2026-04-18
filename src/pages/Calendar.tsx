@@ -641,8 +641,8 @@ const CalendarPage: React.FC = () => {
                                                         </div>
                                                         <h4 className="ev-title">【タスク】{task.title}</h4>
                                                         <div className="ev-loc">{task.description}</div>
-                                                        {task.responseRate !== undefined && (
-                                                            <div className="task-rate">回答率: {task.responseRate}%</div>
+                                                        {task.trackResponseRate && (
+                                                            <div className="task-rate">回答率: {task.responseRate || 0}%</div>
                                                         )}
                                                         <div className="ev-memos-row">
                                                             <button
