@@ -677,6 +677,8 @@ const CalendarPage: React.FC = () => {
                 <MemoEditor
                     memos={globalMemos.filter(m => m.linkedEventId === memoEventId || m.linkedTaskId === memoEventId)}
                     initialMemoId={globalMemos.find(m => m.linkedEventId === memoEventId || m.linkedTaskId === memoEventId)?.id}
+                    defaultLinkedEventId={events.some(e => e.id === memoEventId) ? memoEventId : undefined}
+                    defaultLinkedTaskId={tasks.some(t => t.id === memoEventId) ? memoEventId : undefined}
                     onSave={(newMemos) => {
                         handleSaveMemos(memoEventId!, newMemos);
                     }}

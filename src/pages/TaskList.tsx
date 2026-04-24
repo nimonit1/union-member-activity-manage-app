@@ -456,6 +456,7 @@ const TaskList: React.FC = () => {
         <MemoEditor
           memos={globalMemos.filter(m => m.linkedTaskId === memoTaskId)}
           initialMemoId={globalMemos.find(m => m.linkedTaskId === memoTaskId)?.id}
+          defaultLinkedTaskId={memoTaskId}
           onSave={(newMemos: MemoItem[]) => {
             const otherMemos = globalMemos.filter(m => m.linkedTaskId !== memoTaskId);
             const updatedGlobalMemos = [...otherMemos, ...newMemos];
