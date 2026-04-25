@@ -40,6 +40,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
+    const [showSavedToast, setShowSavedToast] = useState(false);
 
     const [templates] = useState(() => storage.getMemoTemplates());
 
@@ -111,7 +112,10 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
             onSave(newMemos);
             // 保存後も編集状態を維持
             setEditingMemo(finalMemo);
-            alert('保存しました');
+            
+            // トースト表示
+            setShowSavedToast(true);
+            setTimeout(() => setShowSavedToast(false), 2000);
         } catch (error) {
             console.error('Save failed:', error);
             alert('保存に失敗しました');
@@ -341,6 +345,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                             )}
                         </div>
                         <div className="edit-footer">
+                            {showSavedToast && <div className="save-toast">保存しました</div>}
                             <button className="save-btn" onClick={handleSaveMemo}>
                                 <Save size={16} /> 保存
                             </button>
@@ -404,6 +409,14 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                 .edit-footer { height: 60px; padding: 0 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; align-items: center; background: #0f172a; flex-shrink: 0; }
                 .save-btn { background: var(--primary); color: white; border: none; padding: 0.6rem 2.5rem; border-radius: 8px; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s; }
                 .save-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+                .save-toast { background: var(--success); color: white; padding: 0.4rem 1rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; animation: fade-in-out 2s forwards; }
+                @keyframes fade-in-out {
+                    0% { opacity: 0; transform: translateX(10px); }
+                    15% { opacity: 1; transform: translateX(0); }
+                    85% { opacity: 1; transform: translateX(0); }
+                    100% { opacity: 0; transform: translateX(-10px); }
+                }
 
                 .voice-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem; }
                 .record-start-btn, .recording-btn { width: 120px; height: 120px; border-radius: 50%; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }

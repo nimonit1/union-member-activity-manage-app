@@ -209,6 +209,8 @@ export const googleDrive = {
                 console.error('Update Content API Error:', errorText, 'Status:', response.status);
                 throw new Error(`Update failed: ${response.status} - ${errorText}`);
             }
+
+            return await googleDrive.safeParseJson(response);
         } catch (error) {
             console.error('Network error during updateFileContent:', error);
             throw error;

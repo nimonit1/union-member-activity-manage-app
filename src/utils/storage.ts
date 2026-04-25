@@ -135,6 +135,9 @@ export const storage = {
             lastSyncedAt: new Date().toISOString()
         };
 
-        await googleDrive.updateFileContent(fileId, appState);
+        const result = await googleDrive.updateFileContent(fileId, appState);
+        if (result && result.modifiedTime) {
+            localStorage.setItem('union_app_last_cloud_sync', result.modifiedTime);
+        }
     }
 };
