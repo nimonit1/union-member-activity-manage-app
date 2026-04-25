@@ -7,6 +7,7 @@ const SyncStatus: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
+    const [hasUpdate, setHasUpdate] = useState(false);
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -105,8 +106,11 @@ const SyncStatus: React.FC = () => {
             setLastSynced(now.toLocaleTimeString());
             localStorage.setItem('union_app_last_cloud_sync', now.toISOString());
 
-            // 自動同期でクラウド側が高い（更新された）場合はリロードして反映
+            // 自動同期でクラウド側が高い（更新された）場合は通知のみ行う
             if (!force) {
+                setHasUpdate(true);
+            } else {
+                // 手動同期（ボタン押下）の場合はリロードして反映
                 window.location.reload();
             }
         } catch (error: any) {
@@ -159,7 +163,13 @@ const SyncStatus: React.FC = () => {
                 )}
                 <div className="text-content">
                     <span className="label">クラウド同期中</span>
-                    {lastSynced && <span className="time">最終: {lastSynced}</span>}
+                    {hasUpdate ? (
+                        <button className="update-notice-btn" onClick={() => window.location.reload()}>
+                            新しいデータがあります（更新）
+                        </button>
+                    ) : (
+                        lastSynced && <span className="time">最終: {lastSynced}</span>
+                    )}
                 </div>
             </div>
             <div className="actions">
@@ -194,6 +204,23 @@ const SyncStatus: React.FC = () => {
                 .time { font-size: 0.6rem; color: var(--text-muted); }
                 .success { color: var(--success); }
                 .spin { animation: rotate 2s linear infinite; color: var(--primary); }
+                .update-notice-btn {
+                    background: var(--warning);
+                    color: #000;
+                    border: none;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.65rem;
+                    font-weight: 800;
+                    margin-top: 2px;
+                    cursor: pointer;
+                    animation: bounce 2s infinite;
+                }
+                @keyframes bounce {
+                    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+                    40% { transform: translateY(-3px); }
+                    60% { transform: translateY(-2px); }
+                }
                 @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 .actions { display: flex; gap: 0.25rem; }
                 .icon-btn {
