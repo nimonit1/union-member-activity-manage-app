@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { ScheduleEvent, Task, MeetingDefinition, Role } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Shield, Edit3, LayoutList, Calendar } from 'lucide-react';
+import { ScheduleEvent, Task } from '../types';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
-import { MemoItem, TravelExpenseItem } from '../types';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);

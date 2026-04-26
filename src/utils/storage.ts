@@ -22,9 +22,9 @@ export const storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveTasks: (tasks: Task[]): void => {
+    saveTasks: (tasks: Task[], skipCloud = false): void => {
         localStorage.setItem(KEYS.TASKS, JSON.stringify(tasks));
-        storage.uploadToCloud(); // バックグラウンドでアップロードを試行
+        if (!skipCloud) storage.uploadToCloud();
     },
 
     getEvents: (): ScheduleEvent[] => {
@@ -32,9 +32,9 @@ export const storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveEvents: (events: ScheduleEvent[]): void => {
+    saveEvents: (events: ScheduleEvent[], skipCloud = false): void => {
         localStorage.setItem(KEYS.EVENTS, JSON.stringify(events));
-        storage.uploadToCloud(); // バックグラウンドでアップロードを試行
+        if (!skipCloud) storage.uploadToCloud();
     },
 
     getTravelExpenses: (): TravelExpenseItem[] => {
@@ -42,9 +42,9 @@ export const storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveTravelExpenses: (expenses: TravelExpenseItem[]): void => {
+    saveTravelExpenses: (expenses: TravelExpenseItem[], skipCloud = false): void => {
         localStorage.setItem(KEYS.TRAVEL_EXPENSES, JSON.stringify(expenses));
-        storage.uploadToCloud();
+        if (!skipCloud) storage.uploadToCloud();
     },
 
     getMemos: (): any[] => {
@@ -52,9 +52,9 @@ export const storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveMemos: (memos: any[]): void => {
+    saveMemos: (memos: any[], skipCloud = false): void => {
         localStorage.setItem(KEYS.MEMOS, JSON.stringify(memos));
-        storage.uploadToCloud();
+        if (!skipCloud) storage.uploadToCloud();
     },
 
     getMemoTemplates: (): any[] => {
@@ -62,9 +62,9 @@ export const storage = {
         return data ? JSON.parse(data) : [];
     },
 
-    saveMemoTemplates: (templates: any[]): void => {
+    saveMemoTemplates: (templates: any[], skipCloud = false): void => {
         localStorage.setItem(KEYS.MEMO_TEMPLATES, JSON.stringify(templates));
-        storage.uploadToCloud();
+        if (!skipCloud) storage.uploadToCloud();
     },
 
     /**
@@ -79,11 +79,11 @@ export const storage = {
         if (rawData) {
             // クラウドにデータがある場合、マイグレーションを適用してからローカルを更新
             const cloudData = migrateData(rawData);
-            storage.saveTasks(cloudData.tasks);
-            storage.saveEvents(cloudData.events);
-            if (cloudData.travelExpenses) storage.saveTravelExpenses(cloudData.travelExpenses);
-            if (cloudData.memos) storage.saveMemos(cloudData.memos);
-            if (cloudData.memoTemplates) storage.saveMemoTemplates(cloudData.memoTemplates);
+            storage.saveTasks(cloudData.tasks, true);
+            storage.saveEvents(cloudData.events, true);
+            if (cloudData.travelExpenses) storage.saveTravelExpenses(cloudData.travelExpenses, true);
+            if (cloudData.memos) storage.saveMemos(cloudData.memos, true);
+            if (cloudData.memoTemplates) storage.saveMemoTemplates(cloudData.memoTemplates, true);
             // 他の設定データもlocalStorageにキャッシュ（必要に応じて）
             if (cloudData.roles) localStorage.setItem('union_app_roles', JSON.stringify(cloudData.roles));
             if (cloudData.taskDefinitions) localStorage.setItem('union_app_task_defs', JSON.stringify(cloudData.taskDefinitions));

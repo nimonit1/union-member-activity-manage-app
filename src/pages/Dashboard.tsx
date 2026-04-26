@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { Task, ScheduleEvent, TravelExpenseItem } from '../types';
-import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react';
+import { Task, ScheduleEvent } from '../types';
+import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {

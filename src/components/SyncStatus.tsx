@@ -21,13 +21,13 @@ const SyncStatus: React.FC = () => {
             if (authenticated) {
                 // すでにトークンが復元されている（sessionStorage）
                 setIsAuthenticated(true);
-                handleSync(true);
+                handleSync(false);
             } else if (shouldSync) {
                 // トークンはないが同期設定がON（リロード・ブリッジ失敗時や初回）
                 try {
                     await googleDrive.signIn(true); // サイレントサインイン
                     setIsAuthenticated(true);
-                    handleSync(true);
+                    handleSync(false);
                 } catch (e) {
                     console.log('Auto-reconnect failed (expired or revoked):', e);
                     localStorage.removeItem('union_app_sync_enabled');
