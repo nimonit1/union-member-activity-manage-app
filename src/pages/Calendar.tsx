@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { ScheduleEvent, Task, MeetingDefinition, Role, MemoItem, TravelExpenseItem, TravelRoute } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Edit3, Shield, Calendar, LayoutList } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
 
