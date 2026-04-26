@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
-import { ScheduleEvent, Task } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X } from 'lucide-react';
+import { ScheduleEvent, Task, MeetingDefinition, Role, MemoItem, TravelExpenseItem, TravelRoute } from '../types';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
 
@@ -458,7 +458,7 @@ const CalendarPage: React.FC = () => {
                                                             </button>
                                                         </div>
                                                         <div className="travel-routes">
-                                                            {te.routes.map((r, idx) => (
+                                                            {te.routes.map((r: TravelRoute, idx: number) => (
                                                                 <div key={idx} className="route-tag">{r.from} → {r.to}</div>
                                                             ))}
                                                             {te.routes.length === 0 && <span className="empty-route">タップして経路を追加</span>}
