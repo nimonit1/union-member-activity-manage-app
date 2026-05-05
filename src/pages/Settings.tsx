@@ -3,6 +3,8 @@ import { storage } from '../utils/storage';
 import { googleDrive } from '../utils/googleDrive';
 import { Role, TaskDefinition, MeetingDefinition, AppState } from '../types';
 import { Plus, Trash2, Edit2, Shield, BookOpen, Users, Settings as SettingsIcon, ChevronDown, ChevronRight, Download, AlertTriangle } from 'lucide-react';
+import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
+import ToastContainer, { useToast } from '../components/Toast';
 
 const SettingsPage: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
@@ -29,6 +31,8 @@ const SettingsPage: React.FC = () => {
     const [editingRole, setEditingRole] = useState<Partial<Role> | null>(null);
     const [editingTaskDef, setEditingTaskDef] = useState<Partial<TaskDefinition> | null>(null);
     const [editingMtgDef, setEditingMtgDef] = useState<Partial<MeetingDefinition> | null>(null);
+    const { confirmDialogProps, confirm } = useConfirm();
+    const { toasts, showToast, dismissToast } = useToast();
 
     useEffect(() => {
         setRoles(storage.getRoles());
@@ -103,8 +107,9 @@ const SettingsPage: React.FC = () => {
         setEditingRole(null);
     };
 
-    const handleDeleteRole = (id: string) => {
-        if (confirm('この役職を削除しますか？紐付いているタスク・会議体からも解除されます。')) {
+    const handleDeleteRole = async (id: string) => {
+        const ok = await confirm({ title: '役職を削除', message: 'この役職を削除しますか？紐付いているタスク・会議体からも解除されます。', confirmLabel: '削除する' });
+        if (ok) {
             const newRoles = roles.filter(r => r.id !== id);
             setRoles(newRoles);
             const newTaskDefs = taskDefs.map(t => ({ ...t, roleIds: t.roleIds.filter(rid => rid !== id) }));
@@ -112,6 +117,7 @@ const SettingsPage: React.FC = () => {
             setTaskDefs(newTaskDefs);
             setMtgDefs(newMtgDefs);
             saveAll(newRoles, newTaskDefs, newMtgDefs);
+            showToast('役職を削除しました', 'info');
         }
     };
 
@@ -172,11 +178,13 @@ const SettingsPage: React.FC = () => {
         });
     };
 
-    const handleDeleteTaskDef = (id: string) => {
-        if (confirm('この定義を削除しますか？')) {
+    const handleDeleteTaskDef = async (id: string) => {
+        const ok = await confirm({ title: '定型タスクを削除', message: 'この定義を削除しますか？', confirmLabel: '削除する' });
+        if (ok) {
             const newList = taskDefs.filter(t => t.id !== id);
             setTaskDefs(newList);
             saveAll(roles, newList);
+            showToast('定型タスクを削除しました', 'info');
         }
     };
 
@@ -205,28 +213,30 @@ const SettingsPage: React.FC = () => {
         setEditingMtgDef(null);
     };
 
-    const handleDeleteMtgDef = (id: string) => {
-        if (confirm('この定義を削除しますか？')) {
+    const handleDeleteMtgDef = async (id: string) => {
+        const ok = await confirm({ title: '会議体定義を削除', message: 'この定義を削除しますか？', confirmLabel: '削除する' });
+        if (ok) {
             const newList = mtgDefs.filter(m => m.id !== id);
             setMtgDefs(newList);
             saveAll(roles, taskDefs, newList);
+            showToast('会議体定義を削除しました', 'info');
         }
     };
 
     /**
      * ローカルデータを完全に削除してログアウトする
      */
-    const handleWipeData = () => {
-        const message = "警告：この操作を行うと、このブラウザに保存されているすべてのデータ（タスク、予定、設定など）が削除され、ログアウトされます。\n\nGoogle Drive上のデータは削除されませんが、この端末からはアクセスできなくなります。\n\n本当によろしいですか？";
-        if (window.confirm(message)) {
-            // Google Drive ログアウト (トークン破棄)
+    const handleWipeData = async () => {
+        const ok = await confirm({
+            title: 'データを完全削除',
+            message: 'この操作を行うと、このブラウザに保存されているすべてのデータ（タスク、予定、設定など）が削除されログアウトされます。Google Drive上のデータは削除されません。本当によろしいですか？',
+            confirmLabel: 'すべて削除してログアウト',
+            danger: true,
+        });
+        if (ok) {
             googleDrive.signOut();
-
-            // 全ストレージクリア
             localStorage.clear();
             sessionStorage.clear();
-
-            alert('すべてのデータを削除しました。アプリを再起動します。');
             window.location.href = window.location.origin + window.location.pathname;
         }
     };
@@ -810,6 +820,8 @@ const SettingsPage: React.FC = () => {
                 .wipe-btn:hover { background-color: #ef4444; color: white; }
                 .order-num { font-size: 0.75rem; color: var(--text-muted); width: 20px; text-align: center; }
             `}</style>
+            <ConfirmDialog {...confirmDialogProps} />
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
         </div >
     );
 };

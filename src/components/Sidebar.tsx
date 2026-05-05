@@ -4,7 +4,7 @@ import { LayoutDashboard, CheckSquare, Calendar as CalendarIcon, Settings, User,
 import SyncStatus from './SyncStatus';
 
 const Sidebar: React.FC = () => {
-  const menuItems = [
+  const mainItems = [
     { name: 'ダッシュボード', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: 'タスク管理', path: '/tasks', icon: <CheckSquare size={20} /> },
     { name: 'スケジュール', path: '/calendar', icon: <CalendarIcon size={20} /> },
@@ -21,7 +21,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       <nav className="sidebar-nav">
-        {menuItems.map((item) => (
+        {mainItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -31,6 +31,14 @@ const Sidebar: React.FC = () => {
             <span>{item.name}</span>
           </NavLink>
         ))}
+        {/* 設定リンクをナビ下部に固定 */}
+        <NavLink
+          to="/settings"
+          className={({ isActive }) => `nav-link nav-link-settings ${isActive ? 'active' : ''}`}
+        >
+          <Settings size={20} />
+          <span>設定</span>
+        </NavLink>
       </nav>
 
       <SyncStatus />
@@ -40,9 +48,6 @@ const Sidebar: React.FC = () => {
           <User size={18} />
           <span>組合役員 A</span>
         </div>
-        <NavLink to="/settings" className="settings-btn" title="設定">
-          <Settings size={18} />
-        </NavLink>
       </div>
 
       <style>{`
@@ -90,6 +95,12 @@ const Sidebar: React.FC = () => {
           flex-direction: column;
         }
 
+        /* 設定リンクをナビ末尾に押し下げて視覚的に分離 */
+        .nav-link-settings {
+          margin-top: auto;
+          border-top: 1px solid #334155;
+        }
+
         .nav-link {
           display: flex;
           align-items: center;
@@ -126,19 +137,6 @@ const Sidebar: React.FC = () => {
           gap: 0.5rem;
           font-size: 0.875rem;
           color: var(--text-muted);
-        }
-
-        .settings-btn {
-          background: none;
-          border: none;
-          color: var(--text-muted);
-          padding: 4px;
-          border-radius: 4px;
-        }
-
-        .settings-btn:hover {
-          background-color: #334155;
-          color: var(--text-main);
         }
 
         @media (max-width: 768px) {

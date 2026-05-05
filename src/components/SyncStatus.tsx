@@ -103,7 +103,7 @@ const SyncStatus: React.FC = () => {
 
             await storage.syncWithCloud();
             const now = new Date();
-            setLastSynced(now.toLocaleTimeString());
+            setLastSynced(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             localStorage.setItem('union_app_last_cloud_sync', now.toISOString());
 
             // 自動同期でクラウド側が高い（更新された）場合は通知のみ行う

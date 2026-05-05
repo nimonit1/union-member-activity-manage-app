@@ -3,6 +3,7 @@ import { storage } from '../utils/storage';
 import { MemoItem, ScheduleEvent, Task } from '../types';
 import { Plus, Type, Mic, Trash2, Link as LinkIcon, Calendar, CheckSquare, Search } from 'lucide-react';
 import MemoEditor from '../components/MemoEditor';
+import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
 
 const MemoList: React.FC = () => {
     const [memos, setMemos] = useState<MemoItem[]>([]);
@@ -12,6 +13,7 @@ const MemoList: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [linkingMemoId, setLinkingMemoId] = useState<string | null>(null);
     const [editingMemoId, setEditingMemoId] = useState<string | null>(null);
+    const { confirmDialogProps, confirm } = useConfirm();
 
     useEffect(() => {
         setMemos(storage.getMemos());
@@ -40,10 +42,9 @@ const MemoList: React.FC = () => {
         setShowEditor(false);
     };
 
-    const handleDelete = (id: string) => {
-        if (confirm('このメモを削除しますか？')) {
-            saveMemos(memos.filter(m => m.id !== id));
-        }
+    const handleDelete = async (id: string) => {
+        const ok = await confirm({ title: 'メモを削除', message: 'このメモを削除しますか？この操作は元に戻せません。', confirmLabel: '削除する' });
+        if (ok) saveMemos(memos.filter(m => m.id !== id));
     };
 
     const handleLink = (memoId: string, eventId?: string, taskId?: string) => {
@@ -158,8 +159,8 @@ const MemoList: React.FC = () => {
 
             <style>{`
                 .memo-list-page { display: flex; flex-direction: column; gap: 2rem; max-width: 1000px; margin: 0 auto; }
-                .search-bar { display: flex; align-items: center; gap: 0.5rem; background: #1e293b; padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid #334155; }
-                .search-bar input { background: none; border: none; color: white; outline: none; width: 250px; }
+                .search-bar { display: flex; align-items: center; gap: 0.5rem; background: #1e293b; padding: 0.5rem 1rem; border-radius: 20px; border: 1px solid #334155; flex: 1; max-width: 320px; }
+                .search-bar input { background: none; border: none; color: white; outline: none; flex: 1; min-width: 0; }
                 
                 .memo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
                 .memo-card { background: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem; cursor: pointer; transition: all 0.2s; }
@@ -183,6 +184,7 @@ const MemoList: React.FC = () => {
                 .target-btn { text-align: left; padding: 0.75rem; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; display: flex; align-items: center; gap: 0.75rem; }
                 .target-btn:hover { background: #334155; }
             `}</style>
+            <ConfirmDialog {...confirmDialogProps} />
         </div>
     );
 };

@@ -4,6 +4,8 @@ import { Task, TaskCategory, TaskStatus, Priority, TaskDefinition } from '../typ
 import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter, Edit3, ChevronDown, ChevronRight, Layout } from 'lucide-react';
 import MemoEditor from '../components/MemoEditor';
 import { MemoItem } from '../types';
+import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
+import ToastContainer, { useToast } from '../components/Toast';
 
 const TaskList: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -16,6 +18,8 @@ const TaskList: React.FC = () => {
   const [memoTaskId, setMemoTaskId] = useState<string | null>(null);
   const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  const { confirmDialogProps, confirm } = useConfirm();
+  const { toasts, showToast, dismissToast } = useToast();
 
   useEffect(() => {
     setTasks(storage.getTasks());
@@ -53,9 +57,15 @@ const TaskList: React.FC = () => {
     saveTasks(newTasks);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('このタスクを削除しますか？')) {
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'タスクを削除',
+      message: 'このタスクを削除しますか？この操作は元に戻せません。',
+      confirmLabel: '削除する',
+    });
+    if (ok) {
       saveTasks(tasks.filter(t => t.id !== id));
+      showToast('タスクを削除しました', 'info');
     }
   };
 
@@ -170,6 +180,7 @@ const TaskList: React.FC = () => {
       };
       saveTasks([newTask, ...tasks]);
     }
+    showToast(editingTask.id ? 'タスクを更新しました' : 'タスクを作成しました');
     setEditingTask(null);
   };
 
@@ -257,10 +268,13 @@ const TaskList: React.FC = () => {
                     {(['todo', 'in_progress', 'completed'] as TaskStatus[]).map(s => (
                       <button
                         key={s}
-                        className={`status-dot ${task.status === s ? 'active' : ''} ${s}`}
+                        className={`status-dot-btn ${task.status === s ? 'active' : ''} ${s}`}
                         onClick={() => handleStatusChange(task.id, s)}
                         title={getStatusLabel(s)}
-                      />
+                        aria-label={getStatusLabel(s)}
+                      >
+                        <span className="status-dot-visual" />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -467,6 +481,9 @@ const TaskList: React.FC = () => {
         />
       )}
 
+      <ConfirmDialog {...confirmDialogProps} />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
       <style>{`
         .task-page {
           display: flex;
@@ -572,8 +589,8 @@ const TaskList: React.FC = () => {
         }
 
         .template-grid {
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
           gap: 0.75rem;
         }
 
@@ -707,26 +724,45 @@ const TaskList: React.FC = () => {
 
         .status-btns {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.25rem;
           justify-content: flex-end;
         }
 
-        .status-dot {
+        /* タップ領域を44px確保しつつ視覚的ドットは小さく */
+        .status-dot-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: none;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background-color 0.15s;
+        }
+
+        .status-dot-btn:hover {
+          background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .status-dot-visual {
           width: 14px;
           height: 14px;
           border-radius: 50%;
           border: 2px solid transparent;
           background-color: transparent;
+          display: block;
           transition: all 0.2s ease;
         }
 
-        .status-dot.todo { border-color: #475569; }
-        .status-dot.in_progress { border-color: var(--warning); }
-        .status-dot.completed { border-color: var(--success); }
+        .status-dot-btn.todo .status-dot-visual { border-color: #475569; }
+        .status-dot-btn.in_progress .status-dot-visual { border-color: var(--warning); }
+        .status-dot-btn.completed .status-dot-visual { border-color: var(--success); }
 
-        .status-dot.active.todo { background-color: #475569; }
-        .status-dot.active.in_progress { background-color: var(--warning); }
-        .status-dot.active.completed { background-color: var(--success); }
+        .status-dot-btn.active.todo .status-dot-visual { background-color: #475569; }
+        .status-dot-btn.active.in_progress .status-dot-visual { background-color: var(--warning); }
+        .status-dot-btn.active.completed .status-dot-visual { background-color: var(--success); }
 
         /* Subtasks Area */
         .subtasks-area {
@@ -1038,7 +1074,7 @@ const TaskList: React.FC = () => {
         }
 
         @media (max-width: 640px) {
-          .template-grid { grid-template-columns: 1fr; }
+          .template-grid { grid-template-columns: 1fr !important; }
           .rate-btns { flex-wrap: wrap; gap: 0.5rem; }
           .rate-btn { flex: 1 1 30%; font-size: 0.8rem; padding: 0.6rem 0; }
           .task-title { font-size: 1rem; }

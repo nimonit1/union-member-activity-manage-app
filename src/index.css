@@ -9,6 +9,16 @@
   --warning: #f59e0b;
   --success: #10b981;
   --sidebar-width: 260px;
+
+  /* 角丸の統一 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* ボーダー色の統一 */
+  --border: #334155;
+  --border-hover: #475569;
 }
 
 * {

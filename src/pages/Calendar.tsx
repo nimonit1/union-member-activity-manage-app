@@ -4,6 +4,7 @@ import { ScheduleEvent, Task, MeetingDefinition, Role, MemoItem, TravelExpenseIt
 import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Edit3, Shield, Calendar, LayoutList } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
+import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -26,6 +27,7 @@ const CalendarPage: React.FC = () => {
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null); // 追加: タスク編集用
     const [taskEditFormData, setTaskEditFormData] = useState<Partial<Task>>({}); // 追加: タスク編集データ
     const [viewMode, setViewMode] = useState<'list' | 'timetable'>('list'); // 追加: 表示モード
+    const { confirmDialogProps, confirm } = useConfirm();
 
     useEffect(() => {
         setEvents(storage.getEvents());
@@ -59,8 +61,9 @@ const CalendarPage: React.FC = () => {
 
     const getDayString = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-    const handleDeleteEvent = (id: string) => {
-        if (confirm('この予定を削除しますか？')) {
+    const handleDeleteEvent = async (id: string) => {
+        const ok = await confirm({ title: '予定を削除', message: 'この予定を削除しますか？この操作は元に戻せません。', confirmLabel: '削除する' });
+        if (ok) {
             saveEvents(events.filter(e => e.id !== id));
             if (editingEventId === id) setEditingEventId(null);
         }
@@ -286,8 +289,9 @@ const CalendarPage: React.FC = () => {
         storage.saveTravelExpenses(newExpenses);
     };
 
-    const handleDeleteTravelExpense = (id: string) => {
-        if (confirm('この旅費データを削除しますか？')) {
+    const handleDeleteTravelExpense = async (id: string) => {
+        const ok = await confirm({ title: '旅費データを削除', message: 'この旅費データを削除しますか？この操作は元に戻せません。', confirmLabel: '削除する' });
+        if (ok) {
             const newExpenses = travelExpenses.filter(te => te.id !== id);
             setTravelExpenses(newExpenses);
             storage.saveTravelExpenses(newExpenses);
@@ -321,8 +325,9 @@ const CalendarPage: React.FC = () => {
         setEditingTaskId(null);
     };
 
-    const handleDeleteTask = (id: string) => {
-        if (confirm('このタスクを削除しますか？')) {
+    const handleDeleteTask = async (id: string) => {
+        const ok = await confirm({ title: 'タスクを削除', message: 'このタスクを削除しますか？この操作は元に戻せません。', confirmLabel: '削除する' });
+        if (ok) {
             const updatedTasks = tasks.filter(t => t.id !== id);
             setTasks(updatedTasks);
             storage.saveTasks(updatedTasks);
@@ -380,12 +385,21 @@ const CalendarPage: React.FC = () => {
                                             <>
                                                 <span className="day-number">{day}</span>
                                                 <div className="day-events">
-                                                    {dayEvents.map(e => (
-                                                        <div key={e.id} className={`event-dot ${e.category} ${e.status === 'completed' ? 'completed' : ''}`}></div>
-                                                    ))}
-                                                    {dayTasks.map(t => (
-                                                        <div key={t.id} className={`task-dot ${t.status === 'completed' ? 'completed' : ''}`}></div>
-                                                    ))}
+                                                    {(() => {
+                                                        // イベントとタスクを合算して最大3個表示し残数を +N件 で表示
+                                                        const allDots = [
+                                                            ...dayEvents.map(e => ({ id: e.id, cls: `event-dot ${e.category} ${e.status === 'completed' ? 'completed' : ''}` })),
+                                                            ...dayTasks.map(t => ({ id: t.id, cls: `task-dot ${t.status === 'completed' ? 'completed' : ''}` })),
+                                                        ];
+                                                        const visible = allDots.slice(0, 3);
+                                                        const overflow = allDots.length - visible.length;
+                                                        return (
+                                                            <>
+                                                                {visible.map(d => <div key={d.id} className={d.cls} />)}
+                                                                {overflow > 0 && <span className="day-more">+{overflow}</span>}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </>
                                         )}
@@ -750,6 +764,8 @@ const CalendarPage: React.FC = () => {
         .event-dot.completed { background-color: #64748b !important; opacity: 0.6; }
         .task-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; border: 1px solid rgba(255,255,255,0.2); }
         .task-dot.completed { background-color: #64748b !important; opacity: 0.6; }
+        /* 3件超えたときの件数ラベル */
+        .day-more { font-size: 0.55rem; color: var(--text-muted); line-height: 1; white-space: nowrap; }
 
         .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
         .detail-tabs { display: flex; border-bottom: 1px solid #334155; background-color: #1e293b; }
@@ -878,6 +894,7 @@ const CalendarPage: React.FC = () => {
           .time-labels { left: -45px; width: 40px; }
         }
       `}</style>
+        <ConfirmDialog {...confirmDialogProps} />
         </div >
     );
 };
