@@ -7,42 +7,53 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
 let tokenClient: any = null;
 let accessToken: string | null = null;
+// モジュールロード時に Promise を生成し、resolve 関数を外部に保持する
+// SyncStatus が App より先にマウントされても waitForInit() が正しく待機できる
+let resolveInit!: () => void;
+const initPromise: Promise<void> = new Promise<void>((resolve) => {
+    resolveInit = resolve;
+});
 
 export const googleDrive = {
     /**
      * Google Identity Services の初期化
      */
     init: () => {
-        console.log('Google Drive Sync: Initializing version 1.0.6...');
-        // キャッシュされたトークンの復元
+        console.log('Google Drive Sync: Initializing version 1.0.8...');
+        // キャッシュされたトークンの復元（同期処理）
         const cachedToken = sessionStorage.getItem('google_access_token');
         if (cachedToken) {
             accessToken = cachedToken;
             console.log('Google Drive Sync: Restored token from session storage.');
         }
 
-        return new Promise<void>((resolve) => {
-            const checkGsi = setInterval(() => {
-                if (window.google) {
-                    clearInterval(checkGsi);
-                    tokenClient = window.google.accounts.oauth2.initTokenClient({
-                        client_id: CLIENT_ID,
-                        scope: SCOPES,
-                        callback: (tokenResponse: any) => {
-                            if (tokenResponse.error !== undefined) {
-                                throw tokenResponse;
-                            }
-                            accessToken = tokenResponse.access_token;
-                            sessionStorage.setItem('google_access_token', accessToken || '');
-                            resolve();
-                        },
-                    });
-                    // 初期化完了を通知（トークン復元済みでも初期化は必要）
-                    resolve();
-                }
-            }, 100);
-        });
+        const checkGsi = setInterval(() => {
+            if (window.google) {
+                clearInterval(checkGsi);
+                tokenClient = window.google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (tokenResponse: any) => {
+                        if (tokenResponse.error !== undefined) {
+                            throw tokenResponse;
+                        }
+                        accessToken = tokenResponse.access_token;
+                        sessionStorage.setItem('google_access_token', accessToken || '');
+                    },
+                });
+                // tokenClient のセットアップ完了でモジュールレベルの Promise を解決する
+                resolveInit();
+            }
+        }, 100);
+
+        return initPromise;
     },
+
+    /**
+     * GIS の初期化完了を待機する
+     * initPromise はモジュールロード時に生成済みなので常に有効な Promise を返す
+     */
+    waitForInit: (): Promise<void> => initPromise,
 
     /**
      * ログイン（アクセストークンの取得）
@@ -153,6 +164,7 @@ export const googleDrive = {
 
     /**
      * ファイル内容の読み込み
+     * 空ファイル（初回作成直後など）は null を返して初回アップロードに進む
      */
     getFileContent: async (fileId: string) => {
         if (!accessToken) throw new Error('Not authenticated');
@@ -168,7 +180,16 @@ export const googleDrive = {
             throw new Error(`Failed to fetch file content: ${response.status}`);
         }
 
-        return await googleDrive.safeParseJson(response);
+        const text = await response.text();
+        // 空ファイル（初回作成直後）は null を返して uploadToCloud() に進む
+        // safeParseJson の { files: [] } フォールバックは検索API向けのため使用しない
+        if (!text || text.trim() === '') return null;
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('JSON parse error in getFileContent:', e, 'Content:', text);
+            return null;
+        }
     },
 
     /**

@@ -11,8 +11,8 @@ const SyncStatus: React.FC = () => {
 
     useEffect(() => {
         const checkAuth = async () => {
-            // APIの初期化を待つ（App.tsxでinitされているはずだが念のため）
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // GIS の初期化完了を待つ（モバイルでは 500ms 固定では不十分なため Promise を使用）
+            await googleDrive.waitForInit();
 
             // sessionStorage または localStorage のフラグを確認
             const authenticated = googleDrive.isAuthenticated();
@@ -29,8 +29,15 @@ const SyncStatus: React.FC = () => {
                     setIsAuthenticated(true);
                     handleSync(false);
                 } catch (e) {
-                    console.log('Auto-reconnect failed (expired or revoked):', e);
-                    localStorage.removeItem('union_app_sync_enabled');
+                    const message = e instanceof Error ? e.message : String(e);
+                    if (message.includes('not initialized')) {
+                        // GIS が初期化されていないだけなのでフラグは保持する
+                        console.log('Auto-reconnect skipped (GIS not ready):', e);
+                    } else {
+                        // トークン期限切れ・失効のときのみフラグを削除する
+                        console.log('Auto-reconnect failed (expired or revoked):', e);
+                        localStorage.removeItem('union_app_sync_enabled');
+                    }
                     setIsAuthenticated(false);
                 }
             } else {
