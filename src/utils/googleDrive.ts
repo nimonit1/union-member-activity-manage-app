@@ -65,9 +65,10 @@ export const googleDrive = {
 
     /**
      * ログイン（アクセストークンの取得）
-     * @param silent サイレントモード（プロンプトを出さない）
+     * prompt: '' は Google が状況に応じて自動判断する設定。既に許可済みのユーザーには
+     * 同意画面をスキップして即座にトークンを発行し、未許可のユーザーには同意画面を表示する。
      */
-    signIn: (silent = false) => {
+    signIn: () => {
         return new Promise<void>((resolve, reject) => {
             if (!tokenClient) {
                 reject(new Error('Google Drive API not initialized'));
@@ -82,7 +83,7 @@ export const googleDrive = {
                     resolve();
                 }
             };
-            tokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+            tokenClient.requestAccessToken({ prompt: '' });
         });
     },
 

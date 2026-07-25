@@ -25,7 +25,7 @@ const SyncStatus: React.FC = () => {
             } else if (shouldSync) {
                 // トークンはないが同期設定がON（リロード・ブリッジ失敗時や初回）
                 try {
-                    await googleDrive.signIn(true); // サイレントサインイン
+                    await googleDrive.signIn(); // prompt: '' により自動判断（許可済みならサイレント）
                     setIsAuthenticated(true);
                     handleSync(false);
                 } catch (e) {

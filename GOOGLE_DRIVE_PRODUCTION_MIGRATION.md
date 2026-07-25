@@ -41,20 +41,27 @@
 
 ### Track A: コード修正
 
-#### A-1. 同意画面の毎回表示を解消
+#### A-1. 同意画面の毎回表示を解消（実施済み）
 
-**ファイル:** `src/utils/googleDrive.ts` 77行目
+**ファイル:** `src/utils/googleDrive.ts`
 
 ```typescript
 // 変更前
-tokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+signIn: (silent = false) => {
+    ...
+    tokenClient.requestAccessToken({ prompt: silent ? '' : 'consent' });
+}
 
 // 変更後
-tokenClient.requestAccessToken({ prompt: '' });
+signIn: () => {
+    ...
+    tokenClient.requestAccessToken({ prompt: '' });
+}
 ```
 
-- `prompt: 'consent'` が毎回同意画面を強制表示している原因。
-- `prompt: ''` に変更すると、初回のみ同意画面が表示され、以降は自動的にトークンが発行される（本番モードかつ既に許可済みのユーザーの場合）。
+- `prompt: 'consent'` が、ユーザーが手動で「ログイン」ボタンを押すたびに同意画面を強制表示していた原因。
+- `prompt: ''` に統一すると、Googleが状況に応じて自動判断する（未許可のユーザーには同意画面を表示、本番モードで既に許可済みのユーザーにはスキップして即座にトークン発行）ため、`silent`引数による呼び分けが不要になった。
+- 呼び出し側 `src/components/SyncStatus.tsx` の `signIn(true)` も `signIn()` に修正済み。
 
 > 補足: この修正は本番モード移行の効果を最大化するための変更であり、テストモードのままでも一定の緩和は見込めるが、根本的な解決には Track B とのセット適用が必要。
 
