@@ -105,8 +105,8 @@ sequenceDiagram
     
     U->>B: ページ読み込み (リフレッシュ)
     B->>B: storage.init() / localStorageから旧データ読込
-    B->>B: googleDrive.init() (sessionStorage からトークン復元)
-    alt トークンあり (sessionStorage)
+    B->>B: googleDrive.init() (localStorage からトークン復元)
+    alt トークンあり (localStorage)
         B->>B: SyncStatus: 自動同期開始
         B->>G: storage.syncWithCloud() 最新ファイル取得
     else トークンなし & 同期有効フラグあり (localStorage)

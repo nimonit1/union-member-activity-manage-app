@@ -29,10 +29,11 @@ export const googleDrive = {
     init: () => {
         console.log('Google Drive Sync: Initializing version 1.0.8...');
         // キャッシュされたトークンの復元（同期処理）
-        const cachedToken = sessionStorage.getItem('google_access_token');
+        // localStorage を使用: iOSのホーム画面PWAはプロセス終了時にsessionStorageが失われるため
+        const cachedToken = localStorage.getItem('google_access_token');
         if (cachedToken) {
             accessToken = cachedToken;
-            console.log('Google Drive Sync: Restored token from session storage.');
+            console.log('Google Drive Sync: Restored token from local storage.');
         }
 
         const checkGsi = setInterval(() => {
@@ -46,7 +47,7 @@ export const googleDrive = {
                             throw tokenResponse;
                         }
                         accessToken = tokenResponse.access_token;
-                        sessionStorage.setItem('google_access_token', accessToken || '');
+                        localStorage.setItem('google_access_token', accessToken || '');
                     },
                 });
                 // tokenClient のセットアップ完了でモジュールレベルの Promise を解決する
@@ -79,7 +80,7 @@ export const googleDrive = {
                     reject(response);
                 } else {
                     accessToken = response.access_token;
-                    sessionStorage.setItem('google_access_token', accessToken || '');
+                    localStorage.setItem('google_access_token', accessToken || '');
                     resolve();
                 }
             };
@@ -94,10 +95,10 @@ export const googleDrive = {
         if (accessToken) {
             window.google.accounts.oauth2.revoke(accessToken, () => {
                 accessToken = null;
-                sessionStorage.removeItem('google_access_token');
+                localStorage.removeItem('google_access_token');
             });
         } else {
-            sessionStorage.removeItem('google_access_token');
+            localStorage.removeItem('google_access_token');
         }
     },
 

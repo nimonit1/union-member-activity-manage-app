@@ -14,12 +14,12 @@ const SyncStatus: React.FC = () => {
             // GIS の初期化完了を待つ（モバイルでは 500ms 固定では不十分なため Promise を使用）
             await googleDrive.waitForInit();
 
-            // sessionStorage または localStorage のフラグを確認
+            // localStorage のトークン・同期フラグを確認
             const authenticated = googleDrive.isAuthenticated();
             const shouldSync = localStorage.getItem('union_app_sync_enabled') === 'true';
 
             if (authenticated) {
-                // すでにトークンが復元されている（sessionStorage）
+                // すでにトークンが復元されている（localStorage）
                 setIsAuthenticated(true);
                 handleSync(false);
             } else if (shouldSync) {
