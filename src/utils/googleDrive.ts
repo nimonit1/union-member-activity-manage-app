@@ -2,8 +2,16 @@
  * Google Drive API 連携ユーティリティ
  */
 
-const CLIENT_ID = '541237405602-df30i3dm5eje25fl2thhhghp25erv2s6.apps.googleusercontent.com';
+// OAuth Client ID はビルド時に環境変数（VITE_GOOGLE_CLIENT_ID）から埋め込む。
+// ローカル開発: .env.local に設定 / CI: GitHub Actions の Secrets から注入。
+const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+
+if (!CLIENT_ID) {
+    console.error(
+        'VITE_GOOGLE_CLIENT_ID が設定されていません。.env.local を作成し、Google Cloud Console で取得した OAuth Client ID を設定してください。'
+    );
+}
 
 let tokenClient: any = null;
 let accessToken: string | null = null;

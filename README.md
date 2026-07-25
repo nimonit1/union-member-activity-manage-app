@@ -64,5 +64,7 @@
 2. `npm run dev`
 
 ### クラウド同期設定
-Google Cloud ConsoleでOAuth 2.0 クライアントIDを取得し、`src/utils/googleDrive.ts` の `CLIENT_ID` を設定してください。
+Google Cloud ConsoleでOAuth 2.0 クライアントIDを取得し、環境変数 `VITE_GOOGLE_CLIENT_ID` として設定してください（`src/utils/googleDrive.ts` の `CLIENT_ID` はこの環境変数を参照）。
 - 承認済みのJavaScript生成元: `http://localhost:5173`, `https://[your-username].github.io`
+- **ローカル開発**: `.env.example` をコピーして `.env.local` を作成し、`VITE_GOOGLE_CLIENT_ID` に値を設定する（`.env.local` はコミットしない）
+- **GitHub Pages デプロイ（CI）**: リポジトリの Settings → Secrets and variables → Actions に `VITE_GOOGLE_CLIENT_ID` を登録する。`.github/workflows/deploy.yml` のビルドステップがこの Secret をビルド時に埋め込む
