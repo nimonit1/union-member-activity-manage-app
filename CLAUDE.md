@@ -13,6 +13,10 @@ npm run preview  # ビルド成果物のローカルプレビュー
 
 テストランナーは存在しない。
 
+## Git操作
+
+- コミット・プッシュのフェーズでは `git-commit` スキル（`/git-commit`）を使用すること。`git commit` / `git push` を直接実行しない。
+
 ## アーキテクチャ概要
 
 React + TypeScript + Vite 製の SPA（PWA）。GitHub Pages にデプロイされる。
@@ -56,8 +60,8 @@ Pages (UI/状態) → utils/ (ビジネスロジック) → localStorage + Index
 
 ### Google Drive OAuth
 
-- Client ID は `src/utils/googleDrive.ts` の `CLIENT_ID` に直書き
-- アクセストークン → `sessionStorage`（ページリフレッシュ後の自動再認証に利用）
+- Client ID は環境変数 `VITE_GOOGLE_CLIENT_ID` から注入（ローカル: `.env.local` / CI: GitHub Actions Secrets）。`src/utils/googleDrive.ts` の `CLIENT_ID` はこれを参照
+- アクセストークン → `localStorage`（ページリフレッシュ後の自動再認証、およびiOS PWAのプロセス終了後も復元できるように利用）
 - 同期有効フラグ → `localStorage`
 - スコープ: `drive.appdata`（アプリ専用フォルダのみアクセス）
 
