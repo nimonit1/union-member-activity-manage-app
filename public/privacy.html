@@ -1,0 +1,176 @@
+<!--
+  プライバシーポリシーページ
+  Google OAuth同意画面の「公開」に必要な、プライバシーポリシーURLとして使用する静的ページ。
+  Viteのpublic/配下に配置し、ビルド時にdist直下へそのままコピーされる。
+  配色・フォントはアプリ本体（src/index.css）のダークテーマに合わせている。
+-->
+<!doctype html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>プライバシーポリシー | 労働組合 役員活動管理</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --radius-lg: 12px;
+            --radius-md: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem 1.5rem 4rem;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            line-height: 1.8;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem 2rem 2.5rem;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: var(--text-main);
+            margin: 0 0 0.5rem;
+        }
+
+        .updated {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 17px;
+            color: var(--primary);
+            margin-top: 2.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        p,
+        li {
+            font-size: 14px;
+            color: var(--text-main);
+        }
+
+        ul {
+            margin: 0.5rem 0;
+            padding-left: 1.25rem;
+        }
+
+        li {
+            margin-bottom: 0.25rem;
+        }
+
+        .note {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        code {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.1rem 0.4rem;
+            font-size: 0.85em;
+        }
+
+        a {
+            color: var(--primary);
+        }
+
+        .button {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            background-color: var(--primary);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>プライバシーポリシー</h1>
+        <p class="updated">制定日: 2026年7月25日</p>
+
+        <p>
+            本ポリシーは、「労働組合 役員活動管理」（以下「本アプリ」）における利用者情報の取り扱いについて説明するものです。
+        </p>
+
+        <h2>1. 収集する情報</h2>
+        <p>
+            本アプリは、利用者がアプリ内で入力した以下のような活動記録データを取り扱います。
+        </p>
+        <ul>
+            <li>タスク・スケジュール・会議体に関する情報</li>
+            <li>組合員対応（アンケート回答率等）の記録</li>
+            <li>旅費・交通費の記録</li>
+            <li>テキスト・音声形式のメモ</li>
+        </ul>
+        <p>
+            これらは全て利用者自身がアプリ操作の中で入力したデータであり、開発者が能動的に収集・取得するものではありません。
+        </p>
+
+        <h2>2. データの保存場所</h2>
+        <p>
+            上記データは、利用者の端末内（localStorage / IndexedDB）に保存されるほか、クラウド同期機能を有効にした場合は
+            <strong>利用者自身のGoogleドライブ内にある、本アプリ専用の非公開領域（<code>appDataFolder</code>）</strong>
+            にのみ保存されます。
+        </p>
+        <p>
+            本アプリはGoogle Drive APIの <code>drive.appdata</code> スコープのみを使用しており、これは本アプリが作成したファイル以外にはアクセスできない、限定的な権限です。
+        </p>
+        <p class="note">
+            開発者が管理するサーバーやデータベースは存在せず、開発者が利用者のデータを閲覧・取得することはありません。
+        </p>
+
+        <h2>3. 第三者提供</h2>
+        <p>
+            本アプリが取り扱うデータを、第三者に提供・共有することはありません。
+        </p>
+
+        <h2>4. お問い合わせ</h2>
+        <p>
+            本アプリまたは本ポリシーに関するお問い合わせは、以下のGitHub Issuesページよりお願いいたします。
+        </p>
+        <p>
+            <a class="button" href="https://github.com/nimonit1/union-member-activity-manage-app/issues/new"
+                target="_blank" rel="noopener noreferrer">
+                お問い合わせ（GitHub Issuesを作成）
+            </a>
+        </p>
+        <p class="note">
+            投稿にはGitHubアカウントが必要です。投稿内容はリポジトリの性質上、公開されます。
+        </p>
+
+        <h2>5. 本ポリシーの変更について</h2>
+        <p>
+            本ポリシーの内容は、本アプリの機能追加・変更に伴い予告なく更新される場合があります。重要な変更がある場合は、本ページの内容を更新することでお知らせします。
+        </p>
+    </div>
+</body>
+
+</html>

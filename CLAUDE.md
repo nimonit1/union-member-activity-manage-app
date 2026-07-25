@@ -69,6 +69,30 @@ Google Cloud Console で承認済み JavaScript 生成元に `http://localhost:5
 - コンポーネントごとにインラインスタイルを使用（CSS Modules・Tailwind クラスは不使用）
 - パスエイリアス: `@/` → `src/`（`vite.config.ts` と `tsconfig.json` 両方で設定済み）
 
+#### デザイントークン（`src/index.css` 定義）
+
+本アプリはダークテーマを採用している。`public/` 配下の静的ページ（`privacy.html` 等）を含め、
+アプリ全体でこの配色・フォントに統一すること。**個人の CLAUDE.md にある資料作成用のブランドカラー（白背景・青 `#00809E` 等）はこのアプリの UI には適用しない。**
+
+| 用途 | 変数名 | 値 |
+|---|---|---|
+| プライマリカラー | `--primary` | `#3b82f6` |
+| プライマリ（濃） | `--primary-dark` | `#1d4ed8` |
+| 背景（ページ全体） | `--bg-dark` | `#0f172a` |
+| 背景（カード） | `--bg-card` | `#1e293b` |
+| テキスト（メイン） | `--text-main` | `#f8fafc` |
+| テキスト（補助） | `--text-muted` | `#94a3b8` |
+| 危険・エラー | `--danger` | `#ef4444` |
+| 警告 | `--warning` | `#f59e0b` |
+| 成功 | `--success` | `#10b981` |
+| ボーダー | `--border` | `#334155` |
+| ボーダー（hover） | `--border-hover` | `#475569` |
+| 角丸 | `--radius-sm` / `md` / `lg` / `xl` | `6px` / `10px` / `12px` / `16px` |
+
+- フォント: `'Inter', 'Noto Sans JP', sans-serif`
+- カードコンポーネントの典型パターン: `background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;`
+- ボタンの典型パターン: `background-color: var(--primary); color: white; border-radius: 6px〜10px;`
+
 ### デプロイ
 
 - `vite.config.ts` の `base: './'` は GitHub Pages の相対パス対応に必須
