@@ -1,47 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { Cloud, RefreshCw, LogIn, LogOut } from 'lucide-react';
-import { googleDrive } from '../utils/googleDrive';
+import { googleDrive, SignInSupersededError } from '../utils/googleDrive';
 import { storage } from '../utils/storage';
 
 const SyncStatus: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+    const [isSigningIn, setIsSigningIn] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
     const [hasUpdate, setHasUpdate] = useState(false);
 
     useEffect(() => {
         const checkAuth = async () => {
-            // GIS の初期化完了を待つ（モバイルでは 500ms 固定では不十分なため Promise を使用）
-            await googleDrive.waitForInit();
+            try {
+                // GIS の初期化完了を待つ（モバイルでは 500ms 固定では不十分なため Promise を使用）
+                await googleDrive.waitForInit();
 
-            // localStorage のトークン・同期フラグを確認
-            const authenticated = googleDrive.isAuthenticated();
-            const shouldSync = localStorage.getItem('union_app_sync_enabled') === 'true';
+                // localStorage のトークン・同期フラグを確認
+                const authenticated = googleDrive.isAuthenticated();
+                const shouldSync = localStorage.getItem('union_app_sync_enabled') === 'true';
 
-            if (authenticated) {
-                // すでにトークンが復元されている（localStorage）
-                setIsAuthenticated(true);
-                handleSync(false);
-            } else if (shouldSync) {
-                // トークンはないが同期設定がON（リロード・ブリッジ失敗時や初回）
-                try {
-                    await googleDrive.signIn(); // prompt: '' により自動判断（許可済みならサイレント）
+                if (authenticated) {
+                    // すでにトークンが復元されている（localStorage）
                     setIsAuthenticated(true);
                     handleSync(false);
-                } catch (e) {
-                    const message = e instanceof Error ? e.message : String(e);
-                    if (message.includes('not initialized')) {
-                        // GIS が初期化されていないだけなのでフラグは保持する
-                        console.log('Auto-reconnect skipped (GIS not ready):', e);
-                    } else {
-                        // トークン期限切れ・失効のときのみフラグを削除する
-                        console.log('Auto-reconnect failed (expired or revoked):', e);
-                        localStorage.removeItem('union_app_sync_enabled');
+                } else if (shouldSync) {
+                    // トークンはないが同期設定がON（リロード・ブリッジ失敗時や初回）
+                    try {
+                        // 自動・非ユーザー操作のサインインであることを明示する
+                        await googleDrive.signIn({ silent: true });
+                        setIsAuthenticated(true);
+                        handleSync(false);
+                    } catch (e) {
+                        if (e instanceof SignInSupersededError) {
+                            // 手動ログインに優先度負けしただけなので、状態・フラグは変更しない
+                            // （UI状態は handleSignIn 側が更新する）
+                            console.log('Auto-reconnect superseded by manual sign-in');
+                            return;
+                        }
+                        const message = e instanceof Error ? e.message : String(e);
+                        if (message.includes('not initialized')) {
+                            // GIS が初期化されていないだけなのでフラグは保持する
+                            console.log('Auto-reconnect skipped (GIS not ready):', e);
+                        } else {
+                            // トークン期限切れ・失効のときのみフラグを削除する
+                            console.log('Auto-reconnect failed (expired or revoked):', e);
+                            localStorage.removeItem('union_app_sync_enabled');
+                        }
+                        setIsAuthenticated(false);
                     }
+                } else {
                     setIsAuthenticated(false);
                 }
-            } else {
-                setIsAuthenticated(false);
+            } finally {
+                setIsCheckingAuth(false);
             }
         };
 
@@ -69,14 +82,23 @@ const SyncStatus: React.FC = () => {
     }, []);
 
     const handleSignIn = async () => {
+        if (isSigningIn) return; // 連打防止
+        setIsSigningIn(true);
         try {
             await googleDrive.signIn();
             localStorage.setItem('union_app_sync_enabled', 'true');
             setIsAuthenticated(true);
             handleSync();
         } catch (error) {
+            if (error instanceof SignInSupersededError) {
+                // 手動サインインが上書きされることは設計上発生しない想定だが、念のため無害に無視する
+                console.log('Manual sign-in unexpectedly superseded:', error);
+                return;
+            }
             console.error('Sign in failed:', error);
             alert('Googleログインに失敗しました。');
+        } finally {
+            setIsSigningIn(false);
         }
     };
 
@@ -131,12 +153,35 @@ const SyncStatus: React.FC = () => {
         }
     };
 
+    if (isCheckingAuth) {
+        return (
+            <div className="sync-status">
+                <div className="checking-indicator">
+                    <RefreshCw size={14} className="spin" />
+                    <span>同期状態を確認中...</span>
+                </div>
+                <style>{`
+                    .sync-status { padding: 0.5rem 1rem; }
+                    .checking-indicator {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        color: var(--text-muted);
+                        font-size: 0.7rem;
+                    }
+                    .spin { animation: rotate 2s linear infinite; color: var(--primary); }
+                    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                `}</style>
+            </div>
+        );
+    }
+
     if (!isAuthenticated) {
         return (
             <div className="sync-status">
-                <button className="sync-btn login" onClick={handleSignIn}>
+                <button className="sync-btn login" onClick={handleSignIn} disabled={isSigningIn}>
                     <LogIn size={16} />
-                    <span>クラウド同期を開始</span>
+                    <span>{isSigningIn ? 'ログイン中...' : 'クラウド同期を開始'}</span>
                 </button>
                 <style>{`
                     .sync-status { padding: 0.5rem 1rem; }
@@ -155,6 +200,7 @@ const SyncStatus: React.FC = () => {
                         justify-content: center;
                     }
                     .sync-btn:hover { opacity: 0.9; }
+                    .sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
                 `}</style>
             </div>
         );

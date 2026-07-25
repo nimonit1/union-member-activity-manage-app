@@ -13,6 +13,24 @@ if (!CLIENT_ID) {
     );
 }
 
+/**
+ * 自動（サイレント）再接続が、手動ログインによって上書き（優先度負け）されたことを示すエラー。
+ * checkAuth 側はこれを実質的な失敗として扱わず、状態やフラグを変更しない。
+ */
+export class SignInSupersededError extends Error {
+    constructor() {
+        super('Sign-in request was superseded by a manual sign-in');
+        this.name = 'SignInSupersededError';
+    }
+}
+
+interface PendingSignIn {
+    resolve: () => void;
+    reject: (reason: unknown) => void;
+    silent: boolean;
+    superseded: boolean;
+}
+
 let tokenClient: any = null;
 let accessToken: string | null = null;
 // モジュールロード時に Promise を生成し、resolve 関数を外部に保持する
@@ -21,6 +39,12 @@ let resolveInit!: () => void;
 const initPromise: Promise<void> = new Promise<void>((resolve) => {
     resolveInit = resolve;
 });
+
+// GIS の tokenClient は callback を1つしか持てない。requestAccessToken() の呼び出し順と
+// レスポンスの到着順は一致する前提で、FIFO キューを使って各呼び出しに対応する Promise を
+// 正しく解決/拒否する（以前の実装は signIn() のたびに tokenClient.callback を上書きしていたため、
+// 自動サインインの遅延レスポンスが手動サインインの Promise を誤って reject していた）
+const pendingSignIns: PendingSignIn[] = [];
 
 export const googleDrive = {
     /**
@@ -43,11 +67,32 @@ export const googleDrive = {
                     client_id: CLIENT_ID,
                     scope: SCOPES,
                     callback: (tokenResponse: any) => {
-                        if (tokenResponse.error !== undefined) {
-                            throw tokenResponse;
+                        // このコールバックは signIn() のたびに差し替えない。
+                        // 常にキュー先頭（最も古い未処理の signIn() 呼び出し）に結果を振り分ける。
+                        const req = pendingSignIns.shift();
+
+                        if (!req) {
+                            console.error('Google Drive Sync: Unexpected token response with no pending request', tokenResponse);
+                            return;
                         }
+
+                        if (tokenResponse.error !== undefined) {
+                            req.reject(req.superseded ? new SignInSupersededError() : tokenResponse);
+                            return;
+                        }
+
                         accessToken = tokenResponse.access_token;
                         localStorage.setItem('google_access_token', accessToken || '');
+
+                        if (req.superseded) {
+                            // 手動ログインに上書きされた後に自動サインインが成功で返ってきたケース。
+                            // トークンは保存済みなので実害はないが、呼び出し元（自動チェック側）には
+                            // 「上書きされた」ことを伝え、UI状態・フラグの変更を行わせない。
+                            req.reject(new SignInSupersededError());
+                            return;
+                        }
+
+                        req.resolve();
                     },
                 });
                 // tokenClient のセットアップ完了でモジュールレベルの Promise を解決する
@@ -68,22 +113,29 @@ export const googleDrive = {
      * ログイン（アクセストークンの取得）
      * prompt: '' は Google が状況に応じて自動判断する設定。既に許可済みのユーザーには
      * 同意画面をスキップして即座にトークンを発行し、未許可のユーザーには同意画面を表示する。
+     *
+     * @param options.silent true の場合、ユーザー操作を伴わない自動（バックグラウンド）再接続として扱う。
+     *   手動サインイン（デフォルト）が呼ばれた際、キュー内の未処理な silent リクエストは
+     *   SignInSupersededError で決着させ、誤った失敗アラートを防ぐ（手動操作を優先する）。
      */
-    signIn: () => {
+    signIn: (options: { silent?: boolean } = {}): Promise<void> => {
+        const silent = options.silent === true;
+
         return new Promise<void>((resolve, reject) => {
             if (!tokenClient) {
                 reject(new Error('Google Drive API not initialized'));
                 return;
             }
-            tokenClient.callback = (response: any) => {
-                if (response.error) {
-                    reject(response);
-                } else {
-                    accessToken = response.access_token;
-                    localStorage.setItem('google_access_token', accessToken || '');
-                    resolve();
-                }
-            };
+
+            if (!silent) {
+                // 手動操作を優先: キュー内に残っている自動(silent)の未処理リクエストを
+                // 「上書きされた」ものとしてマークする
+                pendingSignIns.forEach((entry) => {
+                    if (entry.silent) entry.superseded = true;
+                });
+            }
+
+            pendingSignIns.push({ resolve, reject, silent, superseded: false });
             tokenClient.requestAccessToken({ prompt: '' });
         });
     },
