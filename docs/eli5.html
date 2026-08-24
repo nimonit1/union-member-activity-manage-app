@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>組合役員アプリ絵本</title>
+<meta name="description" content="組合役員活動管理アプリの機能を、大きな絵と短い言葉だけでやさしく紹介する絵本形式のページ。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#F2F5FA;
+    --bg-card:#FFFFFF;
+    --ink:#1C2430;
+    --ink-soft:#586274;
+    --border:#E1E7F0;
+    --accent-blue:#2F6FED;
+    --accent-coral:#FF6B4A;
+    --accent-mint:#0FA98E;
+    --accent-amber:#F0A22E;
+    --soft-fill:#EDF1F8;
+    --shadow: 0 1px 2px rgba(28,36,48,.06), 0 18px 34px -20px rgba(28,36,48,.28);
+    --font-display:'Zen Maru Gothic','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;
+    --font-body:'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10151F;
+      --bg-card:#1B2432;
+      --ink:#F1F4FA;
+      --ink-soft:#A7B1C4;
+      --border:#2C3547;
+      --accent-blue:#6E97FF;
+      --accent-coral:#FF8B6E;
+      --accent-mint:#3FCFB2;
+      --accent-amber:#F7BB5C;
+      --soft-fill:#232C3D;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 34px -20px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10151F;
+    --bg-card:#1B2432;
+    --ink:#F1F4FA;
+    --ink-soft:#A7B1C4;
+    --border:#2C3547;
+    --accent-blue:#6E97FF;
+    --accent-coral:#FF8B6E;
+    --accent-mint:#3FCFB2;
+    --accent-amber:#F7BB5C;
+    --soft-fill:#232C3D;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 34px -20px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  h1,h2{
+    font-family:var(--font-display);
+    text-wrap:balance;
+    margin:0;
+  }
+  p{ margin:0; line-height:1.85; }
+
+  .book{
+    position:relative;
+    max-width:1040px;
+    margin:0 auto;
+    padding:0 6vw;
+  }
+  @media (min-width:720px){
+    .book{ border-left:2px dashed var(--border); padding-left:calc(6vw + 4px); }
+  }
+
+  /* ---------- eyebrow / folio ---------- */
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:.5em;
+    font-size:.8rem;
+    font-weight:700;
+    letter-spacing:.14em;
+    color:var(--accent-blue);
+    text-transform:uppercase;
+  }
+  .folio{
+    font-family:var(--font-display);
+    font-weight:900;
+    font-size:.85rem;
+    color:var(--ink-soft);
+    letter-spacing:.06em;
+  }
+
+  /* ---------- cover ---------- */
+  .cover{
+    min-height:92vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:1.6rem;
+    padding:4rem 0 2rem;
+  }
+  .cover h1{
+    font-size:clamp(1.9rem, 5vw, 3rem);
+    font-weight:900;
+    max-width:16ch;
+    line-height:1.3;
+  }
+  .cover .lede{
+    max-width:34ch;
+    color:var(--ink-soft);
+    font-size:1.05rem;
+  }
+  .scroll-hint{
+    margin-top:1.4rem;
+    font-size:.85rem;
+    color:var(--ink-soft);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:.4rem;
+  }
+  .scroll-hint svg{ width:18px; height:18px; }
+  @media (prefers-reduced-motion: no-preference){
+    .scroll-hint svg{ animation:bob 1.6s ease-in-out infinite; }
+  }
+  @keyframes bob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(6px);} }
+
+  /* ---------- spreads ---------- */
+  .spread{
+    min-height:78vh;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:1.6rem;
+    padding:4.5rem 0;
+    border-top:1px solid var(--border);
+    opacity:0;
+    transform:translateY(18px);
+    transition:opacity .6s ease, transform .6s ease;
+  }
+  .spread.in-view{ opacity:1; transform:translateY(0); }
+  @media (prefers-reduced-motion: reduce){
+    .spread{ opacity:1; transform:none; transition:none; }
+  }
+
+  .spread-inner{
+    display:flex;
+    align-items:center;
+    gap:clamp(1.6rem,4vw,3.4rem);
+  }
+  .spread-inner.reverse{ flex-direction:row-reverse; }
+  @media (max-width:760px){
+    .spread-inner{ flex-direction:column !important; text-align:center; }
+  }
+
+  .art{
+    flex:0 0 auto;
+    width:min(280px, 42vw);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .art svg{ width:100%; height:auto; overflow:visible; }
+  .art.small{ width:min(200px, 34vw); }
+
+  .txt{ flex:1 1 320px; display:flex; flex-direction:column; gap:.9rem; }
+  .txt h2{ font-size:clamp(1.4rem,3vw,1.9rem); font-weight:900; }
+  .txt p{ color:var(--ink-soft); font-size:1.02rem; max-width:38ch; }
+  @media (max-width:760px){ .txt p{ margin-inline:auto; } }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:.55rem; margin-top:.3rem; }
+  @media (max-width:760px){ .chips{ justify-content:center; } }
+  .chip{
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--ink-soft);
+    font-size:.82rem;
+    font-weight:500;
+    padding:.4rem .85rem;
+    border-radius:999px;
+  }
+
+  /* ---------- overview grid ---------- */
+  .grid-head{ text-align:center; display:flex; flex-direction:column; gap:.6rem; align-items:center; }
+  .tile-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:1.1rem;
+    margin-top:1rem;
+  }
+  @media (max-width:760px){ .tile-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:460px){ .tile-grid{ grid-template-columns:1fr; } }
+  .tile{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:1.4rem 1.1rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:.7rem;
+  }
+  .tile h3{ font-family:var(--font-display); font-size:1.02rem; font-weight:700; margin:0; }
+  .tile p{ font-size:.85rem; color:var(--ink-soft); }
+
+  /* ---------- badges / glyphs ---------- */
+  .badge{
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    background:color-mix(in srgb, var(--accent) 15%, var(--bg-card));
+  }
+  .badge--sm{ width:60px; height:60px; }
+  .badge--sm svg{ width:38px; height:38px; }
+  .badge--md{ width:96px; height:96px; }
+  .badge--md svg{ width:62px; height:62px; }
+
+  .ln{ fill:var(--bg-card); stroke:var(--ink); stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
+  .ln-thin{ fill:none; stroke:var(--ink-soft); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+  .dashed{ stroke-dasharray:6 6; }
+  .fill-blue{ fill:var(--accent-blue); }
+  .fill-coral{ fill:var(--accent-coral); }
+  .fill-mint{ fill:var(--accent-mint); }
+  .fill-amber{ fill:var(--accent-amber); }
+  .fill-card{ fill:var(--bg-card); }
+  .fill-soft{ fill:var(--soft-fill); }
+  .fill-inksoft{ fill:var(--ink-soft); }
+  .stroke-mint{ stroke:var(--accent-mint); }
+  .coin-glyph{ font-family:var(--font-display); font-weight:700; font-size:13px; fill:var(--ink); }
+
+  /* ---------- closing ---------- */
+  .closing{ text-align:center; align-items:center; }
+  .recap{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:1.3rem 1.6rem;
+    margin:1.6rem 0;
+  }
+  .recap-item{ display:flex; flex-direction:column; align-items:center; gap:.5rem; width:84px; }
+  .recap-item span{ font-size:.78rem; color:var(--ink-soft); }
+  .the-end{
+    margin-top:1.2rem;
+    font-family:var(--font-display);
+    font-weight:900;
+    font-size:1rem;
+    letter-spacing:.2em;
+    color:var(--ink-soft);
+    display:flex; align-items:center; gap:.7rem;
+  }
+  .the-end::before, .the-end::after{ content:""; width:34px; height:1px; background:var(--border); }
+
+  /* ---------- bookmark dot nav ---------- */
+  .dots{
+    position:fixed;
+    right:14px;
+    top:50%;
+    transform:translateY(-50%);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    z-index:5;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:12px 7px;
+    box-shadow:var(--shadow);
+  }
+  @media (max-width:640px){ .dots{ display:none; } }
+  .dots a{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--border);
+    display:block;
+    transition:background .25s ease, transform .25s ease;
+  }
+  .dots a:focus-visible{ outline:2px solid var(--accent-blue); outline-offset:3px; }
+  .dots a.active{ background:var(--accent-blue); transform:scale(1.3); }
+
+  footer.credit{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:.8rem;
+    padding:2.5rem 0 3.5rem;
+  }
+</style>
+</head>
+<body>
+
+<nav class="dots" aria-label="ページ移動">
+  <a href="#cover" data-target="cover" aria-label="表紙"></a>
+  <a href="#s1" data-target="s1" aria-label="01"></a>
+  <a href="#s2" data-target="s2" aria-label="02"></a>
+  <a href="#s3" data-target="s3" aria-label="03"></a>
+  <a href="#s4" data-target="s4" aria-label="04"></a>
+  <a href="#s5" data-target="s5" aria-label="05"></a>
+  <a href="#s6" data-target="s6" aria-label="06"></a>
+  <a href="#s7" data-target="s7" aria-label="07"></a>
+</nav>
+
+<div class="book">
+
+  <header class="cover" id="cover">
+    <span class="eyebrow">組合役員アプリ絵本</span>
+    <h1>毎日の「やること」を、<br>ひとつにまとめるアプリです。</h1>
+    <p class="lede">組合の役員が、タスクや予定を忘れずにこなすための道具です。絵でざっくり紹介します。</p>
+
+    <svg viewBox="0 0 220 220" width="220" style="max-width:60vw">
+      <rect x="4" y="140" width="140" height="8" rx="4" class="ln fill-inksoft"/>
+      <rect x="18" y="95" width="112" height="70" rx="8" class="ln fill-card"/>
+      <rect x="30" y="106" width="88" height="48" rx="4" class="fill-soft"/>
+      <rect x="95" y="14" width="112" height="200" rx="20" class="ln fill-card"/>
+      <rect x="107" y="32" width="88" height="164" rx="10" class="fill-soft"/>
+      <rect x="107" y="32" width="88" height="30" rx="10" class="fill-blue"/>
+      <rect x="118" y="80" width="66" height="20" rx="8" class="ln-thin fill-card"/>
+      <circle cx="129" cy="90" r="7" class="fill-mint"/>
+      <rect x="118" y="108" width="66" height="20" rx="8" class="ln-thin fill-card"/>
+      <circle cx="129" cy="118" r="7" class="fill-coral"/>
+      <rect x="118" y="136" width="66" height="20" rx="8" class="ln-thin fill-card"/>
+      <circle cx="129" cy="146" r="7" class="fill-amber"/>
+      <rect x="140" y="192" width="30" height="6" rx="3" class="fill-inksoft"/>
+    </svg>
+
+    <div class="scroll-hint">
+      <span>下にスクロールして、ページをめくってください</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4v16M6 14l6 6 6-6"/></svg>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- 01 だれが使うの -->
+    <section class="spread" id="s1" data-n="01">
+      <div class="spread-inner">
+        <div class="art">
+          <svg viewBox="0 0 140 150">
+            <circle cx="70" cy="38" r="26" class="ln fill-card"/>
+            <circle cx="61" cy="36" r="3.4" class="fill-inksoft"/>
+            <circle cx="79" cy="36" r="3.4" class="fill-inksoft"/>
+            <path d="M58,48 Q70,58 82,48" class="ln-thin" fill="none"/>
+            <rect x="30" y="70" width="80" height="72" rx="36" class="ln fill-card"/>
+            <rect x="55" y="66" width="16" height="80" rx="8" transform="rotate(22 70 106)" class="fill-coral"/>
+            <circle cx="55" cy="100" r="12" class="ln-thin fill-amber"/>
+          </svg>
+        </div>
+        <div class="txt">
+          <span class="folio">Page 01</span>
+          <span class="eyebrow">だれが使うの？</span>
+          <h2>組合の役員さんが使います。</h2>
+          <p>委員長や書記長など、自分の役職に必要な情報だけが届くようになっています。</p>
+          <div class="chips">
+            <span class="chip">委員長</span>
+            <span class="chip">書記長</span>
+            <span class="chip">会計</span>
+            <span class="chip">執行委員</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 なにができるの（一覧） -->
+    <section class="spread" id="s2" data-n="02">
+      <div class="grid-head">
+        <span class="folio">Page 02</span>
+        <span class="eyebrow">なにができるの？</span>
+        <h2>6つのことが、これ1つで。</h2>
+      </div>
+
+      <div class="tile-grid">
+        <div class="tile">
+          <div class="badge badge--sm" style="--accent:var(--accent-mint)">
+            <svg viewBox="0 0 56 56"><rect x="16" y="6" width="24" height="7" rx="3.5" class="ln"/><rect x="10" y="11" width="36" height="39" rx="7" class="ln"/><polyline points="18,29 24,35 39,19" class="ln-thin stroke-mint"/><line x1="18" y1="40" x2="38" y2="40" class="ln-thin"/></svg>
+          </div>
+          <h3>タスク管理</h3>
+          <p>組合員対応も事務も、リストでひと目</p>
+        </div>
+        <div class="tile">
+          <div class="badge badge--sm" style="--accent:var(--accent-blue)">
+            <svg viewBox="0 0 56 56"><rect x="7" y="11" width="42" height="36" rx="7" class="ln"/><line x1="7" y1="22" x2="49" y2="22" class="ln-thin"/><line x1="17" y1="5" x2="17" y2="14" class="ln-thin"/><line x1="39" y1="5" x2="39" y2="14" class="ln-thin"/><circle cx="18" cy="32" r="3" class="fill-coral"/><circle cx="28" cy="32" r="3" class="fill-amber"/><circle cx="38" cy="32" r="3" class="fill-mint"/></svg>
+          </div>
+          <h3>カレンダー</h3>
+          <p>会議や出張の予定をまとめて確認</p>
+        </div>
+        <div class="tile">
+          <div class="badge badge--sm" style="--accent:var(--accent-coral)">
+            <svg viewBox="0 0 56 56"><rect x="8" y="6" width="27" height="44" rx="6" class="ln"/><line x1="14" y1="18" x2="29" y2="18" class="ln-thin"/><line x1="14" y1="27" x2="29" y2="27" class="ln-thin"/><line x1="14" y1="36" x2="24" y2="36" class="ln-thin"/><rect x="33" y="21" width="15" height="25" rx="7.5" class="ln fill-coral"/><line x1="40.5" y1="46" x2="40.5" y2="52" class="ln-thin"/><line x1="34" y1="52" x2="47" y2="52" class="ln-thin"/></svg>
+          </div>
+          <h3>メモ・音声</h3>
+          <p>思いついたことを文字でも声でも</p>
+        </div>
+        <div class="tile">
+          <div class="badge badge--sm" style="--accent:var(--accent-amber)">
+            <svg viewBox="0 0 56 56"><rect x="6" y="20" width="40" height="27" rx="7" class="ln"/><rect x="6" y="20" width="40" height="10" rx="7" class="fill-blue"/><circle cx="17" cy="12" r="9" class="ln fill-amber"/><text x="17" y="16.5" text-anchor="middle" class="coin-glyph">¥</text></svg>
+          </div>
+          <h3>旅費精算</h3>
+          <p>出張の交通費をその場で計算</p>
+        </div>
+        <div class="tile">
+          <div class="badge badge--sm" style="--accent:var(--accent-blue)">
+            <svg viewBox="0 0 56 56"><polygon points="8,10 48,10 32,28 32,46 24,46 24,28" class="ln"/></svg>
+          </div>
+          <h3>役職フィルタ</h3>
+          <p>自分に関係ある予定だけに絞り込み</p>
+        </div>
+        <div class="tile">
+          <div class="badge badge--sm" style="--accent:var(--accent-mint)">
+            <svg viewBox="0 0 56 56"><path d="M16,42 C8,42 6,32 14,29 C13,20 25,15 32,21 C36,15 47,17 47,26 C53,27 53,38 46,40 C46,42 46,42 46,42 Z" class="ln"/></svg>
+          </div>
+          <h3>クラウド同期</h3>
+          <p>スマホとパソコンでデータを共有</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 タスク -->
+    <section class="spread" id="s3" data-n="03">
+      <div class="spread-inner">
+        <div class="art">
+          <div class="badge badge--md" style="--accent:var(--accent-mint); width:200px; height:200px;">
+            <svg viewBox="0 0 56 56" style="width:130px;height:130px;"><rect x="16" y="6" width="24" height="7" rx="3.5" class="ln"/><rect x="10" y="11" width="36" height="39" rx="7" class="ln"/><polyline points="18,29 24,35 39,19" class="ln-thin stroke-mint"/><line x1="18" y1="40" x2="38" y2="40" class="ln-thin"/></svg>
+          </div>
+        </div>
+        <div class="txt">
+          <span class="folio">Page 03</span>
+          <span class="eyebrow">タスク管理</span>
+          <h2>やることを、忘れない。</h2>
+          <p>終わったものにはチェック。組合員対応の進み具合も数字でわかります。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 カレンダー -->
+    <section class="spread" id="s4" data-n="04">
+      <div class="spread-inner reverse">
+        <div class="art">
+          <div class="badge badge--md" style="--accent:var(--accent-blue); width:200px; height:200px;">
+            <svg viewBox="0 0 56 56" style="width:130px;height:130px;"><rect x="7" y="11" width="42" height="36" rx="7" class="ln"/><line x1="7" y1="22" x2="49" y2="22" class="ln-thin"/><line x1="17" y1="5" x2="17" y2="14" class="ln-thin"/><line x1="39" y1="5" x2="39" y2="14" class="ln-thin"/><circle cx="18" cy="32" r="3" class="fill-coral"/><circle cx="28" cy="32" r="3" class="fill-amber"/><circle cx="38" cy="32" r="3" class="fill-mint"/><circle cx="18" cy="41" r="3" class="fill-blue"/></svg>
+          </div>
+        </div>
+        <div class="txt">
+          <span class="folio">Page 04</span>
+          <span class="eyebrow">カレンダー</span>
+          <h2>予定を、うっかりしない。</h2>
+          <p>会議や出張を一目で確認。自分の役職に関係あるものだけ絞り込めます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 メモと旅費 -->
+    <section class="spread" id="s5" data-n="05">
+      <div class="spread-inner">
+        <div class="art" style="gap:1.2rem; display:flex;">
+          <div class="badge badge--md" style="--accent:var(--accent-coral)">
+            <svg viewBox="0 0 56 56"><rect x="8" y="6" width="27" height="44" rx="6" class="ln"/><line x1="14" y1="18" x2="29" y2="18" class="ln-thin"/><line x1="14" y1="27" x2="29" y2="27" class="ln-thin"/><line x1="14" y1="36" x2="24" y2="36" class="ln-thin"/><rect x="33" y="21" width="15" height="25" rx="7.5" class="ln fill-coral"/><line x1="40.5" y1="46" x2="40.5" y2="52" class="ln-thin"/><line x1="34" y1="52" x2="47" y2="52" class="ln-thin"/></svg>
+          </div>
+          <div class="badge badge--md" style="--accent:var(--accent-amber)">
+            <svg viewBox="0 0 56 56"><rect x="6" y="20" width="40" height="27" rx="7" class="ln"/><rect x="6" y="20" width="40" height="10" rx="7" class="fill-blue"/><circle cx="17" cy="12" r="9" class="ln fill-amber"/><text x="17" y="16.5" text-anchor="middle" class="coin-glyph">¥</text></svg>
+          </div>
+        </div>
+        <div class="txt">
+          <span class="folio">Page 05</span>
+          <span class="eyebrow">メモ・旅費精算</span>
+          <h2>思いついたら、すぐ記録。</h2>
+          <p>文字でも声でもメモできて、出張の交通費もその場で計算できます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 同期 -->
+    <section class="spread" id="s6" data-n="06">
+      <div class="spread-inner reverse">
+        <div class="art">
+          <svg viewBox="0 0 240 170">
+            <g transform="translate(76,-6) scale(1.7)">
+              <path d="M16,42 C8,42 6,32 14,29 C13,20 25,15 32,21 C36,15 47,17 47,26 C53,27 53,38 46,40 C46,42 46,42 46,42 Z" class="ln fill-card"/>
+            </g>
+            <line x1="82" y1="58" x2="58" y2="88" class="ln-thin dashed"/>
+            <line x1="158" y1="58" x2="182" y2="96" class="ln-thin dashed"/>
+            <rect x="15" y="90" width="60" height="70" rx="12" class="ln fill-card"/>
+            <rect x="24" y="102" width="42" height="46" rx="6" class="fill-blue"/>
+            <rect x="150" y="98" width="80" height="52" rx="8" class="ln fill-card"/>
+            <rect x="160" y="107" width="60" height="34" rx="4" class="fill-blue"/>
+            <rect x="140" y="150" width="100" height="9" rx="4.5" class="fill-inksoft"/>
+          </svg>
+        </div>
+        <div class="txt">
+          <span class="folio">Page 06</span>
+          <span class="eyebrow">クラウド同期</span>
+          <h2>スマホでも、パソコンでも。</h2>
+          <p>Googleドライブでつながっているので、どちらで入力しても、もう片方にちゃんと反映されます。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 まとめ -->
+    <section class="spread closing" id="s7" data-n="07">
+      <span class="folio">Page 07</span>
+      <span class="eyebrow">まとめ</span>
+      <h2>組合の毎日を、ちょっとラクに。</h2>
+      <p style="color:var(--ink-soft); max-width:36ch; margin-top:.6rem;">6つの機能が1つのアプリにまとまっているだけ。むずかしい操作は、ひとつもありません。</p>
+
+      <div class="recap">
+        <div class="recap-item"><div class="badge badge--sm" style="--accent:var(--accent-mint)"><svg viewBox="0 0 56 56"><rect x="16" y="6" width="24" height="7" rx="3.5" class="ln"/><rect x="10" y="11" width="36" height="39" rx="7" class="ln"/><polyline points="18,29 24,35 39,19" class="ln-thin stroke-mint"/></svg></div><span>タスク</span></div>
+        <div class="recap-item"><div class="badge badge--sm" style="--accent:var(--accent-blue)"><svg viewBox="0 0 56 56"><rect x="7" y="11" width="42" height="36" rx="7" class="ln"/><line x1="7" y1="22" x2="49" y2="22" class="ln-thin"/><circle cx="18" cy="32" r="3" class="fill-coral"/><circle cx="28" cy="32" r="3" class="fill-amber"/></svg></div><span>カレンダー</span></div>
+        <div class="recap-item"><div class="badge badge--sm" style="--accent:var(--accent-coral)"><svg viewBox="0 0 56 56"><rect x="8" y="6" width="27" height="44" rx="6" class="ln"/><rect x="33" y="21" width="15" height="25" rx="7.5" class="ln fill-coral"/></svg></div><span>メモ</span></div>
+        <div class="recap-item"><div class="badge badge--sm" style="--accent:var(--accent-amber)"><svg viewBox="0 0 56 56"><rect x="6" y="20" width="40" height="27" rx="7" class="ln"/><rect x="6" y="20" width="40" height="10" rx="7" class="fill-blue"/><circle cx="17" cy="12" r="9" class="ln fill-amber"/></svg></div><span>旅費</span></div>
+        <div class="recap-item"><div class="badge badge--sm" style="--accent:var(--accent-blue)"><svg viewBox="0 0 56 56"><polygon points="8,10 48,10 32,28 32,46 24,46 24,28" class="ln"/></svg></div><span>役職フィルタ</span></div>
+        <div class="recap-item"><div class="badge badge--sm" style="--accent:var(--accent-mint)"><svg viewBox="0 0 56 56"><path d="M16,42 C8,42 6,32 14,29 C13,20 25,15 32,21 C36,15 47,17 47,26 C53,27 53,38 46,40 C46,42 46,42 46,42 Z" class="ln"/></svg></div><span>同期</span></div>
+      </div>
+
+      <div class="the-end">おしまい</div>
+    </section>
+
+  </main>
+
+  <footer class="credit">組合役員アプリ絵本 — 役員活動管理アプリのやさしい紹介</footer>
+</div>
+
+<script>
+  (function(){
+    try{
+      var sections = document.querySelectorAll('.spread');
+      var reveal = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in-view'); } });
+      }, { threshold: 0.15 });
+      sections.forEach(function(s){ reveal.observe(s); });
+
+      var dotLinks = document.querySelectorAll('.dots a');
+      var trackables = [document.getElementById('cover')].concat(Array.prototype.slice.call(sections));
+      var idToDot = {};
+      dotLinks.forEach(function(a){ idToDot[a.dataset.target] = a; });
+
+      var nav = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            dotLinks.forEach(function(a){ a.classList.remove('active'); });
+            var dot = idToDot[e.target.id];
+            if(dot){ dot.classList.add('active'); }
+          }
+        });
+      }, { threshold: 0.5 });
+      trackables.forEach(function(t){ if(t){ nav.observe(t); } });
+    }catch(err){ /* 装飾機能のため失敗時は静かに無視 */ }
+  })();
+</script>
+</body>
+</html>
