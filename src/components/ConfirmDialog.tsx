@@ -1,6 +1,7 @@
 // ブラウザネイティブのconfirm()を置き換えるアプリ内確認ダイアログ
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useModal } from '../utils/useModal';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -24,6 +25,9 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  // Esc でキャンセル / 背面スクロール固定 / 閉じたときのフォーカス復帰
+  useModal(isOpen, onCancel);
+
   if (!isOpen) return null;
 
   return (
@@ -46,13 +50,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <h3 id="confirm-title" className="confirm-title">{title}</h3>
         <p id="confirm-message" className="confirm-message">{message}</p>
         <div className="confirm-actions">
-          <button className="confirm-cancel-btn" onClick={onCancel}>
+          {/* 破壊的操作では誤って Enter を押しても実行されないよう、キャンセル側に初期フォーカスを置く */}
+          <button className="confirm-cancel-btn" onClick={onCancel} autoFocus={danger}>
             {cancelLabel}
           </button>
           <button
             className={`confirm-ok-btn ${danger ? 'danger' : ''}`}
             onClick={onConfirm}
-            autoFocus
+            autoFocus={!danger}
           >
             {confirmLabel}
           </button>
@@ -74,10 +79,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           transform: translate(-50%, -50%);
           z-index: 3001;
           background: var(--bg-card);
-          border: 1px solid #334155;
-          border-radius: 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
           padding: 1.75rem;
           width: min(400px, calc(100vw - 2rem));
+          max-height: calc(100dvh - 2rem);
+          overflow-y: auto;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -91,7 +98,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           height: 48px;
           border-radius: 50%;
           background: rgba(245, 158, 11, 0.15);
-          color: #f59e0b;
+          color: var(--warning);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -109,6 +116,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           color: var(--text-muted);
           margin: 0;
           line-height: 1.5;
+          white-space: pre-line;
         }
 
         .confirm-actions {
@@ -120,10 +128,11 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
         .confirm-cancel-btn {
           flex: 1;
+          min-height: 44px;
           padding: 0.625rem;
           background: transparent;
-          border: 1px solid #334155;
-          border-radius: 8px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
           color: var(--text-muted);
           font-size: 0.875rem;
           cursor: pointer;
@@ -131,16 +140,17 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         }
 
         .confirm-cancel-btn:hover {
-          background: #334155;
+          background: var(--border);
           color: var(--text-main);
         }
 
         .confirm-ok-btn {
           flex: 1;
+          min-height: 44px;
           padding: 0.625rem;
           background: var(--primary);
           border: none;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           color: white;
           font-size: 0.875rem;
           font-weight: 600;

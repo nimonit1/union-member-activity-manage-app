@@ -3,11 +3,13 @@ import { storage } from '../utils/storage';
 import { TravelExpenseItem, ScheduleEvent } from '../types';
 import { Plus, Calendar, Trash2, Edit2, X, Save, MapPin, ChevronRight } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
+import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
 
 const TravelExpenses: React.FC = () => {
     const [expenses, setExpenses] = useState<TravelExpenseItem[]>([]);
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
     const [editingItem, setEditingItem] = useState<Partial<TravelExpenseItem> | null>(null);
+    const { confirmDialogProps, confirm } = useConfirm();
 
     useEffect(() => {
         setExpenses(storage.getTravelExpenses());
@@ -34,8 +36,9 @@ const TravelExpenses: React.FC = () => {
         setEditingItem({ ...item });
     };
 
-    const handleDelete = (id: string) => {
-        if (confirm('この旅費明細を削除しますか？')) {
+    const handleDelete = async (id: string) => {
+        const ok = await confirm({ title: '旅費明細を削除', message: 'この旅費明細を削除しますか？この操作は取り消せません。' });
+        if (ok) {
             saveExpenses(expenses.filter(e => e.id !== id));
         }
     };
@@ -108,8 +111,8 @@ const TravelExpenses: React.FC = () => {
                             )}
 
                             <div className="card-actions">
-                                <button className="icon-btn" onClick={() => handleEdit(item)}><Edit2 size={16} /></button>
-                                <button className="icon-btn delete" onClick={() => handleDelete(item.id)}><Trash2 size={16} /></button>
+                                <button className="icon-btn" onClick={() => handleEdit(item)} aria-label={`「${item.title}」を編集`} title="編集"><Edit2 size={16} aria-hidden="true" /></button>
+                                <button className="icon-btn delete" onClick={() => handleDelete(item.id)} aria-label={`「${item.title}」を削除`} title="削除"><Trash2 size={16} aria-hidden="true" /></button>
                             </div>
                         </div>
                     ))
@@ -123,7 +126,7 @@ const TravelExpenses: React.FC = () => {
                     <div className="modal-content">
                         <div className="modal-header">
                             <h2>{editingItem.id && expenses.find(e => e.id === editingItem.id) ? '旅費明細を編集' : '新規旅費明細'}</h2>
-                            <button className="close-btn" onClick={() => setEditingItem(null)}><X size={20} /></button>
+                            <button className="close-btn" onClick={() => setEditingItem(null)} aria-label="閉じる" title="閉じる"><X size={20} aria-hidden="true" /></button>
                         </div>
                         <form onSubmit={handleSave}>
                             <div className="form-group">
@@ -174,6 +177,8 @@ const TravelExpenses: React.FC = () => {
                 </div>
             )}
 
+            <ConfirmDialog {...confirmDialogProps} />
+
             <style>{`
                 .travel-page {
                     max-width: 900px;
@@ -191,8 +196,8 @@ const TravelExpenses: React.FC = () => {
 
                 .expense-card {
                     background-color: var(--bg-card);
-                    border: 1px solid #334155;
-                    border-radius: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius-lg);
                     padding: 1.25rem;
                     display: flex;
                     flex-direction: column;
@@ -214,7 +219,7 @@ const TravelExpenses: React.FC = () => {
                     gap: 0.4rem;
                     background-color: rgba(255, 255, 255, 0.05);
                     padding: 2px 8px;
-                    border-radius: 4px;
+                    border-radius: var(--radius-xs);
                 }
 
                 .total-amount {
@@ -248,7 +253,7 @@ const TravelExpenses: React.FC = () => {
                     color: var(--primary);
                     background-color: rgba(59, 130, 246, 0.1);
                     padding: 4px 8px;
-                    border-radius: 4px;
+                    border-radius: var(--radius-xs);
                     display: flex;
                     align-items: center;
                     gap: 0.4rem;
@@ -260,7 +265,7 @@ const TravelExpenses: React.FC = () => {
                     gap: 0.5rem;
                     margin-top: 0.5rem;
                     padding-top: 0.75rem;
-                    border-top: 1px solid #334155;
+                    border-top: 1px solid var(--border);
                 }
 
                 .form-row {

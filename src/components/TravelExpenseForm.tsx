@@ -105,36 +105,36 @@ const TravelExpenseForm: React.FC<TravelExpenseFormProps> = ({ routes, onChange 
             <button className="add-btn" onClick={addRoute}><Plus size={14} /> 経路を追加</button>
 
             <style>{`
-        .travel-expense-form { margin-top: 1rem; border-top: 1px solid #334155; padding-top: 1rem; }
+        .travel-expense-form { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
         .expense-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
         .expense-header label { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
-        .total-badge { background-color: var(--success); color: white; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; }
+        .total-badge { background-color: var(--success); color: white; padding: 2px 8px; border-radius: var(--radius-xs); font-weight: 700; font-size: 0.85rem; }
 
         .recent-routes { margin-bottom: 1rem; }
-        .recent-label { font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem; }
+        .recent-label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem; }
         .recent-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .copy-chip { background-color: #334155; border: 1px solid #475569; color: var(--text-muted); font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
-        .copy-chip:hover { background-color: #475569; color: var(--text-main); }
+        .copy-chip { background-color: var(--border); border: 1px solid var(--border-hover); color: var(--text-muted); font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-pill); cursor: pointer; display: flex; align-items: center; gap: 0.3rem; }
+        .copy-chip:hover { background-color: var(--border-hover); color: var(--text-main); }
 
         .routes-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.75rem; }
-        .route-item { background-color: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px; padding: 0.75rem; }
+        .route-item { background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.75rem; }
         .route-inputs { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-        .route-inputs input { background: none; border: none; border-bottom: 1px solid #334155; color: white; flex: 1; font-size: 0.85rem; padding: 2px 0; }
+        .route-inputs input { background: none; border: none; border-radius: 0; border-bottom: 1px solid var(--border); color: white; flex: 1; font-size: 0.85rem; padding: 2px 0; }
         .route-inputs input:focus { border-bottom-color: var(--primary); outline: none; }
         .arrow { color: var(--text-muted); font-size: 0.8rem; }
 
         .route-meta { display: flex; align-items: center; gap: 1rem; }
-        .amount-box { display: flex; align-items: center; gap: 4px; background-color: #1e293b; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; width: 100px; }
-        .amount-box input { background: none; border: none; color: white; width: 100%; text-align: right; }
+        .amount-box { display: flex; align-items: center; gap: 4px; background-color: var(--bg-card); padding: 2px 8px; border-radius: var(--radius-xs); font-size: 0.8rem; width: 100px; }
+        .amount-box input { background: none; border: none; border-radius: 0; color: white; width: 100%; text-align: right; }
         .amount-box input:focus { outline: none; }
 
-        .trip-toggle { display: flex; background-color: #1e293b; border-radius: 4px; overflow: hidden; }
-        .trip-toggle button { background: none; border: none; color: var(--text-muted); font-size: 0.7rem; padding: 4px 10px; cursor: pointer; }
+        .trip-toggle { display: flex; background-color: var(--bg-card); border-radius: var(--radius-xs); overflow: hidden; }
+        .trip-toggle button { background: none; border: none; color: var(--text-muted); font-size: 0.75rem; padding: 4px 10px; cursor: pointer; }
         .trip-toggle button.active { background-color: var(--primary); color: white; }
         .del-btn { margin-left: auto; color: var(--text-muted); background: none; border: none; }
         .del-btn:hover { color: var(--danger); }
 
-        .add-btn { width: 100%; background: none; border: 1px dashed #475569; color: var(--text-muted); padding: 0.5rem; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .add-btn { width: 100%; background: none; border: 1px dashed var(--border-hover); color: var(--text-muted); padding: 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .add-btn:hover { background-color: rgba(255, 255, 255, 0.03); color: var(--text-main); border-style: solid; }
       `}</style>
         </div>

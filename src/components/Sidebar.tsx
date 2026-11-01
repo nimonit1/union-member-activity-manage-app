@@ -5,22 +5,22 @@ import SyncStatus from './SyncStatus';
 
 const Sidebar: React.FC = () => {
   const mainItems = [
-    { name: 'ダッシュボード', path: '/', icon: <LayoutDashboard size={20} /> },
-    { name: 'タスク管理', path: '/tasks', icon: <CheckSquare size={20} /> },
-    { name: 'スケジュール', path: '/calendar', icon: <CalendarIcon size={20} /> },
-    { name: 'メモ一覧', path: '/memos', icon: <StickyNote size={20} /> },
+    { name: 'ダッシュボード', path: '/', icon: <LayoutDashboard size={20} aria-hidden="true" /> },
+    { name: 'タスク管理', path: '/tasks', icon: <CheckSquare size={20} aria-hidden="true" /> },
+    { name: 'スケジュール', path: '/calendar', icon: <CalendarIcon size={20} aria-hidden="true" /> },
+    { name: 'メモ一覧', path: '/memos', icon: <StickyNote size={20} aria-hidden="true" /> },
   ];
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="app-logo">
-          <div className="logo-icon">U</div>
+          <div className="logo-icon" aria-hidden="true">U</div>
           <span>役員活動管理</span>
         </div>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav" aria-label="メインナビゲーション">
         {mainItems.map((item) => (
           <NavLink
             key={item.path}
@@ -36,7 +36,7 @@ const Sidebar: React.FC = () => {
           to="/settings"
           className={({ isActive }) => `nav-link nav-link-settings ${isActive ? 'active' : ''}`}
         >
-          <Settings size={20} />
+          <Settings size={20} aria-hidden="true" />
           <span>設定</span>
         </NavLink>
       </nav>
@@ -45,7 +45,7 @@ const Sidebar: React.FC = () => {
 
       <div className="sidebar-footer">
         <div className="user-info">
-          <User size={18} />
+          <User size={18} aria-hidden="true" />
           <span>組合役員 A</span>
         </div>
       </div>
@@ -54,7 +54,7 @@ const Sidebar: React.FC = () => {
         .sidebar {
           width: var(--sidebar-width);
           background-color: var(--bg-card);
-          border-right: 1px solid #334155;
+          border-right: 1px solid var(--border);
           display: flex;
           flex-direction: column;
           height: 100vh;
@@ -65,7 +65,7 @@ const Sidebar: React.FC = () => {
 
         .sidebar-header {
           padding: 1.5rem;
-          border-bottom: 1px solid #334155;
+          border-bottom: 1px solid var(--border);
         }
 
         .app-logo {
@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
           width: 32px;
           height: 32px;
           background-color: var(--primary);
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -98,7 +98,7 @@ const Sidebar: React.FC = () => {
         /* 設定リンクをナビ末尾に押し下げて視覚的に分離 */
         .nav-link-settings {
           margin-top: auto;
-          border-top: 1px solid #334155;
+          border-top: 1px solid var(--border);
         }
 
         .nav-link {
@@ -111,21 +111,21 @@ const Sidebar: React.FC = () => {
           border-left: 3px solid transparent;
         }
 
-        .nav-link:hover {
-          background-color: #334155;
+        .nav-link:hover,
+        .nav-link:focus-visible {
+          background-color: var(--border);
           color: var(--text-main);
         }
 
         .nav-link.active {
           color: var(--primary);
-          background-color: #1e293b;
           border-left-color: var(--primary);
           background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(30, 41, 59, 0) 100%);
         }
 
         .sidebar-footer {
           padding: 1rem 1.5rem;
-          border-top: 1px solid #334155;
+          border-top: 1px solid var(--border);
           display: flex;
           align-items: center;
           justify-content: space-between;

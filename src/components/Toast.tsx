@@ -15,12 +15,14 @@ interface ToastItemProps {
   onDismiss: (id: string) => void;
 }
 
-// 個別トースト — 表示後3秒で自動消去
+// 個別トースト — 成功 / 情報は3秒、エラーは内容を読み切れるよう7秒で自動消去
+const AUTO_DISMISS_MS: Record<ToastType, number> = { success: 3000, info: 4000, error: 7000 };
+
 const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
   useEffect(() => {
-    const timer = setTimeout(() => onDismiss(toast.id), 3000);
+    const timer = setTimeout(() => onDismiss(toast.id), AUTO_DISMISS_MS[toast.type]);
     return () => clearTimeout(timer);
-  }, [toast.id, onDismiss]);
+  }, [toast.id, toast.type, onDismiss]);
 
   const icon =
     toast.type === 'success' ? <CheckCircle size={16} /> :
@@ -28,7 +30,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onDismiss }) => {
     <Info size={16} />;
 
   return (
-    <div className={`toast-item toast-${toast.type}`}>
+    <div className={`toast-item toast-${toast.type}`} role={toast.type === 'error' ? 'alert' : undefined}>
       {icon}
       <span className="toast-message">{toast.message}</span>
       <button
@@ -48,12 +50,12 @@ interface ToastContainerProps {
 }
 
 // トーストコンテナ — 画面右下に固定表示
+// 通知領域(aria-live)は、中身が追加される前から DOM 上に存在していないと読み上げられないため、
+// トーストが無いときも空のまま描画し続ける
 const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) => {
-  if (toasts.length === 0) return null;
-
   return (
     <>
-      <div className="toast-container" role="status" aria-live="polite">
+      <div className="toast-container" role="status" aria-live="polite" aria-atomic="false">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
         ))}
@@ -61,12 +63,14 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
       <style>{`
         .toast-container {
           position: fixed;
-          bottom: 1.5rem;
-          right: 1.5rem;
+          bottom: calc(1.5rem + var(--safe-bottom));
+          right: calc(1.5rem + var(--safe-right));
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
           z-index: 9999;
+          /* 空のときに背面の操作を妨げない */
+          pointer-events: none;
         }
 
         .toast-item {
@@ -74,29 +78,31 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
           align-items: center;
           gap: 0.5rem;
           padding: 0.625rem 0.875rem;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           font-size: 0.875rem;
           font-weight: 500;
           min-width: 240px;
           max-width: 360px;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
           animation: toast-slide-in 0.2s ease;
+          pointer-events: auto;
+          overflow-wrap: anywhere;
         }
 
         .toast-success {
-          background-color: rgba(16, 185, 129, 0.15);
+          background: linear-gradient(rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.15)), var(--bg-card);
           border: 1px solid rgba(16, 185, 129, 0.4);
           color: #34d399;
         }
 
         .toast-error {
-          background-color: rgba(239, 68, 68, 0.15);
+          background: linear-gradient(rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.15)), var(--bg-card);
           border: 1px solid rgba(239, 68, 68, 0.4);
           color: #f87171;
         }
 
         .toast-info {
-          background-color: rgba(59, 130, 246, 0.15);
+          background: linear-gradient(rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.15)), var(--bg-card);
           border: 1px solid rgba(59, 130, 246, 0.4);
           color: #60a5fa;
         }
@@ -111,8 +117,9 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
           border: none;
           color: var(--text-muted);
           cursor: pointer;
-          padding: 2px;
-          border-radius: 4px;
+          padding: 8px;
+          margin: -6px -6px -6px 0;
+          border-radius: var(--radius-sm);
           display: flex;
           align-items: center;
           flex-shrink: 0;
@@ -129,9 +136,10 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) =>
 
         @media (max-width: 768px) {
           .toast-container {
-            bottom: 5rem;
-            right: 0.75rem;
-            left: 0.75rem;
+            /* 下部ナビ(64px) とホームインジケータの上に表示する */
+            bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 0.75rem);
+            right: calc(0.75rem + var(--safe-right));
+            left: calc(0.75rem + var(--safe-left));
           }
           .toast-item {
             min-width: unset;

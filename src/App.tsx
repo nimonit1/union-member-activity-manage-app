@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { HashRouter as Router, Routes, Route } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import TaskList from './pages/TaskList'
@@ -27,6 +27,8 @@ function App() {
                     <Route path="/calendar" element={<Calendar />} />
                     <Route path="/memos" element={<MemoList />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    {/* 存在しないパス（古いブックマークなど）は空白画面にせずダッシュボードへ戻す */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Layout>
         </Router>
