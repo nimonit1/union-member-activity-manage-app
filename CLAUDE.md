@@ -91,11 +91,13 @@ Google Cloud Console で承認済み JavaScript 生成元に `http://localhost:5
 | 成功 | `--success` | `#10b981` |
 | ボーダー | `--border` | `#334155` |
 | ボーダー（hover） | `--border-hover` | `#475569` |
-| 角丸 | `--radius-sm` / `md` / `lg` / `xl` | `6px` / `10px` / `12px` / `16px` |
+| 角丸 | `--radius-xs` / `sm` / `md` / `lg` / `xl` / `pill` | `4px` / `6px` / `10px` / `12px` / `16px` / `999px` |
+| カテゴリ色 | `--cat-union` / `--cat-admin` / `--cat-committee` | `#ef4444` / `#3b82f6` / `#22c55e` |
+| 本文最大幅 | `--content-max-width` | `1100px` |
 
 - フォント: `'Inter', 'Noto Sans JP', sans-serif`
-- カードコンポーネントの典型パターン: `background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;`
-- ボタンの典型パターン: `background-color: var(--primary); color: white; border-radius: 6px〜10px;`
+- カードコンポーネントの典型パターン: `background-color: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);`
+- ボタンの典型パターン: `background-color: var(--primary); color: white; border-radius: var(--radius-sm)〜var(--radius-md);`
 
 ### デプロイ
 

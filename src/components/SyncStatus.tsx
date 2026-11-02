@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Cloud, RefreshCw, LogIn, LogOut } from 'lucide-react';
 import { googleDrive, SignInSupersededError } from '../utils/googleDrive';
 import { storage } from '../utils/storage';
+import ConfirmDialog, { useConfirm } from './ConfirmDialog';
+import ToastContainer, { useToast } from './Toast';
 
 const SyncStatus: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -10,6 +13,8 @@ const SyncStatus: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
     const [hasUpdate, setHasUpdate] = useState(false);
+    const { toasts, showToast, dismissToast } = useToast();
+    const { confirmDialogProps, confirm } = useConfirm();
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -96,13 +101,21 @@ const SyncStatus: React.FC = () => {
                 return;
             }
             console.error('Sign in failed:', error);
-            alert('Googleログインに失敗しました。');
+            showToast('Googleログインに失敗しました。もう一度お試しください。', 'error');
         } finally {
             setIsSigningIn(false);
         }
     };
 
-    const handleSignOut = () => {
+    const handleSignOut = async () => {
+        // 同期ボタンと隣り合っているため、誤タップで同期が止まらないよう確認を挟む
+        const ok = await confirm({
+            title: 'クラウド同期を停止',
+            message: 'ログアウトすると、他の端末との自動同期が止まります。この端末のデータは残ります。',
+            confirmLabel: 'ログアウト',
+            danger: false,
+        });
+        if (!ok) return;
         googleDrive.signOut();
         localStorage.removeItem('union_app_sync_enabled');
         setIsAuthenticated(false);
@@ -146,32 +159,30 @@ const SyncStatus: React.FC = () => {
             console.error('Sync Error:', error);
             if (force) {
                 const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-                alert(`同期に失敗しました。\n詳細: ${errorMsg}`);
+                showToast(`同期に失敗しました。詳細: ${errorMsg}`, 'error');
             }
         } finally {
             setIsSyncing(false);
         }
     };
 
+    // トーストと確認ダイアログは、サイドバーの重なり順(z-index)の影響を受けないよう body 直下に描画する
+    const overlays = createPortal(
+        <>
+            <ConfirmDialog {...confirmDialogProps} />
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        </>,
+        document.body
+    );
+
     if (isCheckingAuth) {
         return (
-            <div className="sync-status">
-                <div className="checking-indicator">
-                    <RefreshCw size={14} className="spin" />
+            <div className="sync-status" role="status">
+                <div className="sync-checking">
+                    <RefreshCw size={14} className="sync-spin" aria-hidden="true" />
                     <span>同期状態を確認中...</span>
                 </div>
-                <style>{`
-                    .sync-status { padding: 0.5rem 1rem; }
-                    .checking-indicator {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                        color: var(--text-muted);
-                        font-size: 0.7rem;
-                    }
-                    .spin { animation: rotate 2s linear infinite; color: var(--primary); }
-                    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                `}</style>
+                <style>{SYNC_STYLES}</style>
             </div>
         );
     }
@@ -179,116 +190,146 @@ const SyncStatus: React.FC = () => {
     if (!isAuthenticated) {
         return (
             <div className="sync-status">
-                <button className="sync-btn login" onClick={handleSignIn} disabled={isSigningIn}>
-                    <LogIn size={16} />
+                <button className="sync-btn" onClick={handleSignIn} disabled={isSigningIn}>
+                    <LogIn size={16} aria-hidden="true" />
                     <span>{isSigningIn ? 'ログイン中...' : 'クラウド同期を開始'}</span>
                 </button>
-                <style>{`
-                    .sync-status { padding: 0.5rem 1rem; }
-                    .sync-btn {
-                        display: flex;
-                        align-items: center;
-                        gap: 0.5rem;
-                        background-color: var(--primary);
-                        color: white;
-                        border: none;
-                        padding: 0.5rem 0.75rem;
-                        border-radius: 6px;
-                        font-size: 0.75rem;
-                        cursor: pointer;
-                        width: 100%;
-                        justify-content: center;
-                    }
-                    .sync-btn:hover { opacity: 0.9; }
-                    .sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-                `}</style>
+                {overlays}
+                <style>{SYNC_STYLES}</style>
             </div>
         );
     }
 
     return (
         <div className="sync-status authenticated">
-            <div className="status-info">
+            <div className="sync-info">
                 {isSyncing ? (
-                    <RefreshCw size={14} className="spin" />
+                    <RefreshCw size={14} className="sync-spin" aria-hidden="true" />
                 ) : (
-                    <Cloud size={14} className="success" />
+                    <Cloud size={14} className="sync-ok" aria-hidden="true" />
                 )}
-                <div className="text-content">
-                    <span className="label">クラウド同期中</span>
+                <div className="sync-text">
+                    <span className="sync-label">クラウド同期中</span>
                     {hasUpdate ? (
-                        <button className="update-notice-btn" onClick={() => window.location.reload()}>
-                            新しいデータがあります（更新）
+                        <button className="sync-update-btn" onClick={() => window.location.reload()}>
+                            新しいデータあり（再読込）
                         </button>
                     ) : (
-                        lastSynced && <span className="time">最終: {lastSynced}</span>
+                        lastSynced && <span className="sync-time">最終: {lastSynced}</span>
                     )}
                 </div>
             </div>
-            <div className="actions">
-                <button className="icon-btn" onClick={() => handleSync(true)} title="今すぐ同期" disabled={isSyncing}>
-                    <RefreshCw size={14} />
+            <div className="sync-actions">
+                <button className="sync-icon-btn" onClick={() => handleSync(true)} title="今すぐ同期" aria-label="今すぐ同期" disabled={isSyncing}>
+                    <RefreshCw size={16} aria-hidden="true" />
                 </button>
-                <button className="icon-btn" onClick={handleSignOut} title="ログアウト">
-                    <LogOut size={14} />
+                <button className="sync-icon-btn" onClick={handleSignOut} title="ログアウト" aria-label="ログアウト">
+                    <LogOut size={16} aria-hidden="true" />
                 </button>
             </div>
-            <style>{`
-                .sync-status.authenticated {
-                    padding: 0.5rem 1rem;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    background-color: rgba(255, 255, 255, 0.03);
-                    border-radius: 8px;
-                    margin: 0.5rem 1rem;
-                }
-                .mobile-header .sync-status.authenticated {
-                    margin: 0;
-                    padding: 0;
-                    background: none;
-                }
-                .mobile-header .sync-status {
-                    padding: 0;
-                }
-                .status-info { display: flex; align-items: center; gap: 0.75rem; }
-                .text-content { display: flex; flex-direction: column; }
-                .label { font-size: 0.7rem; font-weight: 700; color: var(--text-main); }
-                .time { font-size: 0.6rem; color: var(--text-muted); }
-                .success { color: var(--success); }
-                .spin { animation: rotate 2s linear infinite; color: var(--primary); }
-                .update-notice-btn {
-                    background: var(--warning);
-                    color: #000;
-                    border: none;
-                    padding: 2px 8px;
-                    border-radius: 4px;
-                    font-size: 0.65rem;
-                    font-weight: 800;
-                    margin-top: 2px;
-                    cursor: pointer;
-                    animation: bounce 2s infinite;
-                }
-                @keyframes bounce {
-                    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-                    40% { transform: translateY(-3px); }
-                    60% { transform: translateY(-2px); }
-                }
-                @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                .actions { display: flex; gap: 0.25rem; }
-                .icon-btn {
-                    background: none;
-                    border: none;
-                    color: var(--text-muted);
-                    padding: 4px;
-                    border-radius: 4px;
-                    cursor: pointer;
-                }
-                .icon-btn:hover { background-color: #334155; color: var(--text-main); }
-                .icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-            `}</style>
+            {overlays}
+            <style>{SYNC_STYLES}</style>
         </div>
     );
 };
+
+// 汎用的なクラス名(.label / .time / .icon-btn など)はアプリ全体のスタイルと衝突していたため、
+// このコンポーネントのクラスはすべて sync- 接頭辞で名前空間を分けている
+const SYNC_STYLES = `
+    .sync-status { padding: 0.5rem 1rem; }
+    .sync-status.authenticated {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        background-color: rgba(255, 255, 255, 0.03);
+        border-radius: var(--radius-md);
+        margin: 0.5rem 1rem;
+    }
+    .mobile-header .sync-status,
+    .mobile-header .sync-status.authenticated {
+        margin: 0;
+        padding: 0;
+        background: none;
+    }
+
+    .sync-checking {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+
+    .sync-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        min-height: 36px;
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .sync-btn:hover:not(:disabled) { background-color: var(--primary-dark); }
+    .sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .mobile-header .sync-btn { width: auto; min-height: 40px; }
+
+    .sync-info { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+    .sync-text { display: flex; flex-direction: column; min-width: 0; }
+    .sync-label { font-size: 0.75rem; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+    .sync-time { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+    .sync-ok { color: var(--success); flex-shrink: 0; }
+    .sync-spin { animation: sync-rotate 2s linear infinite; color: var(--primary); flex-shrink: 0; }
+
+    .sync-update-btn {
+        background: var(--warning);
+        color: #000;
+        border: none;
+        padding: 4px 10px;
+        border-radius: var(--radius-xs);
+        font-size: 0.75rem;
+        font-weight: 800;
+        margin-top: 2px;
+        cursor: pointer;
+        white-space: nowrap;
+        animation: sync-bounce 2s infinite;
+    }
+    @keyframes sync-bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-3px); }
+        60% { transform: translateY(-2px); }
+    }
+    @keyframes sync-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    .sync-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+    .sync-icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        min-height: 36px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+    }
+    .sync-icon-btn:hover:not(:disabled) { background-color: var(--border); color: var(--text-main); }
+    .sync-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* モバイルヘッダーは幅が狭いので、ラベルを隠して時刻とボタンだけにする */
+    @media (max-width: 768px) {
+        .mobile-header .sync-label { display: none; }
+        .mobile-header .sync-icon-btn { min-width: 44px; min-height: 44px; }
+    }
+`;
 
 export default SyncStatus;

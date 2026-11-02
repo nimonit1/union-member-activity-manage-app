@@ -5,6 +5,9 @@ import { Role, TaskDefinition, MeetingDefinition, AppState } from '../types';
 import { Plus, Trash2, Edit2, Shield, BookOpen, Users, Settings as SettingsIcon, ChevronDown, ChevronRight, Download, AlertTriangle } from 'lucide-react';
 import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
 import ToastContainer, { useToast } from '../components/Toast';
+import { buttonProps } from '../utils/a11y';
+import { useModal } from '../utils/useModal';
+import CategoryDot, { CATEGORY_LABELS } from '../components/CategoryDot';
 
 const SettingsPage: React.FC = () => {
     const [roles, setRoles] = useState<Role[]>([]);
@@ -131,7 +134,7 @@ const SettingsPage: React.FC = () => {
             category: newTaskDef.category as any || 'union_member',
             priority: newTaskDef.priority as any || 'medium',
             roleIds: newTaskDef.roleIds || [],
-            trackResponseRate: newTaskDef.trackResponseRate !== undefined ? newTaskDef.trackResponseRate : (newTaskDef.category === 'union_member')
+            trackResponseRate: !!newTaskDef.trackResponseRate
         };
         const newList = [...taskDefs, def];
         setTaskDefs(newList);
@@ -247,6 +250,11 @@ const SettingsPage: React.FC = () => {
             : [...currentRoles, roleId];
     };
 
+    // 編集モーダル: Esc で閉じる / 背面スクロール固定 / フォーカス復帰
+    useModal(!!editingRole, () => setEditingRole(null));
+    useModal(!!editingTaskDef, () => setEditingTaskDef(null));
+    useModal(!!editingMtgDef, () => setEditingMtgDef(null));
+
     return (
         <div className="settings-page">
             <header className="page-header">
@@ -255,8 +263,8 @@ const SettingsPage: React.FC = () => {
 
             <div className="settings-accordion">
                 {/* 1. 個人設定 */}
-                <div className={`accordion - section ${openSections.prefs ? 'open' : ''} `}>
-                    <div className="section-header" onClick={() => toggleSection('prefs')}>
+                <div className={`accordion-section ${openSections.prefs ? 'open' : ''}`}>
+                    <div className="section-header" aria-expanded={!!openSections.prefs} {...buttonProps(() => toggleSection('prefs'))}>
                         <SettingsIcon size={20} />
                         <h2>個人設定・データ管理</h2>
                         {openSections.prefs ? <ChevronDown /> : <ChevronRight />}
@@ -306,8 +314,8 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* 2. 役職定義 */}
-                <div className={`accordion - section ${openSections.roles ? 'open' : ''} `}>
-                    <div className="section-header" onClick={() => toggleSection('roles')}>
+                <div className={`accordion-section ${openSections.roles ? 'open' : ''}`}>
+                    <div className="section-header" aria-expanded={!!openSections.roles} {...buttonProps(() => toggleSection('roles'))}>
                         <Users size={20} />
                         <h2>役職の定義</h2>
                         {openSections.roles ? <ChevronDown /> : <ChevronRight />}
@@ -328,8 +336,8 @@ const SettingsPage: React.FC = () => {
                                                 <td>{role.name}</td>
                                                 <td>
                                                     <div className="actions">
-                                                        <button className="icon-btn" onClick={() => setEditingRole(role)}><Edit2 size={14} /></button>
-                                                        <button className="icon-btn delete" onClick={() => handleDeleteRole(role.id)}><Trash2 size={14} /></button>
+                                                        <button className="icon-btn" onClick={() => setEditingRole(role)} aria-label={`役職「${role.name}」を編集`} title="編集"><Edit2 size={14} aria-hidden="true" /></button>
+                                                        <button className="icon-btn delete" onClick={() => handleDeleteRole(role.id)} aria-label={`役職「${role.name}」を削除`} title="削除"><Trash2 size={14} aria-hidden="true" /></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -356,8 +364,8 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* 3. 定型タスク */}
-                <div className={`accordion - section ${openSections.tasks ? 'open' : ''} `}>
-                    <div className="section-header" onClick={() => toggleSection('tasks')}>
+                <div className={`accordion-section ${openSections.tasks ? 'open' : ''}`}>
+                    <div className="section-header" aria-expanded={!!openSections.tasks} {...buttonProps(() => toggleSection('tasks'))}>
                         <BookOpen size={20} />
                         <h2>定型タスクの定義</h2>
                         {openSections.tasks ? <ChevronDown /> : <ChevronRight />}
@@ -381,14 +389,13 @@ const SettingsPage: React.FC = () => {
                                                 <td>
                                                     <strong>{def.title}</strong>
                                                     <div className="sub-text">{def.description}</div>
+                                                    {def.trackResponseRate && <span className="rate-chip">回答率を測る</span>}
                                                 </td>
-                                                <td>
-                                                    {def.category === 'union_member' && '🔴 組合員'}
-                                                    {def.category === 'administrative' && '🔵 事務'}
-                                                    {def.category === 'committee' && '🟢 委員'}
+                                                <td data-label="カテゴリ">
+                                                    <CategoryDot category={def.category} />{CATEGORY_LABELS[def.category]}
                                                 </td>
-                                                <td><span className={`prio - tag ${def.priority} `}>{def.priority}</span></td>
-                                                <td>
+                                                <td data-label="優先度"><span className={`prio-tag ${def.priority}`}>{{ high: '高', medium: '中', low: '低' }[def.priority]}</span></td>
+                                                <td data-label="対象役職">
                                                     <div className="role-mini-badges">
                                                         {def.roleIds.length > 0 ? def.roleIds.map(rid => (
                                                             <span key={rid} className="mini-badge">
@@ -399,8 +406,8 @@ const SettingsPage: React.FC = () => {
                                                 </td>
                                                 <td>
                                                     <div className="actions">
-                                                        <button className="icon-btn" onClick={() => setEditingTaskDef(def)}><Edit2 size={14} /></button>
-                                                        <button className="icon-btn delete" onClick={() => handleDeleteTaskDef(def.id)}><Trash2 size={14} /></button>
+                                                        <button className="icon-btn" onClick={() => setEditingTaskDef(def)} aria-label={`定型タスク「${def.title}」を編集`} title="編集"><Edit2 size={14} aria-hidden="true" /></button>
+                                                        <button className="icon-btn delete" onClick={() => handleDeleteTaskDef(def.id)} aria-label={`定型タスク「${def.title}」を削除`} title="削除"><Trash2 size={14} aria-hidden="true" /></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -414,20 +421,28 @@ const SettingsPage: React.FC = () => {
                                                         placeholder="新しい定型タスク名..."
                                                     />
                                                     <select value={newTaskDef.category} onChange={e => setNewTaskDef({ ...newTaskDef, category: e.target.value as any, trackResponseRate: e.target.value === 'union_member' })}>
-                                                        <option value="union_member">🔴 組合員</option>
-                                                        <option value="administrative">🔵 事務</option>
-                                                        <option value="committee">🟢 委員</option>
+                                                        <option value="union_member">組合員</option>
+                                                        <option value="administrative">事務</option>
+                                                        <option value="committee">委員</option>
                                                     </select>
                                                     <select value={newTaskDef.priority} onChange={e => setNewTaskDef({ ...newTaskDef, priority: e.target.value as any })}>
                                                         <option value="high">高</option>
                                                         <option value="medium">中</option>
                                                         <option value="low">低</option>
                                                     </select>
+                                                    <label className="inline-check">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={!!newTaskDef.trackResponseRate}
+                                                            onChange={e => setNewTaskDef({ ...newTaskDef, trackResponseRate: e.target.checked })}
+                                                        />
+                                                        回答率を測る
+                                                    </label>
                                                     <button className="add-inline-btn" onClick={handleAddTaskDef} disabled={!newTaskDef.title}>
                                                         <Plus size={16} /> 追加
                                                     </button>
                                                 </div>
-                                                <p className="hint">※詳細は追加後の編集から設定してください</p>
+                                                <p className="hint">※「回答率を測る」をオンにした種類のタスクは、作成時から回答率の記録欄が表示されます。カテゴリ変更時は初期値が自動で切り替わります。詳細は追加後の編集から設定できます</p>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -438,8 +453,8 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* 4. 会議体 */}
-                <div className={`accordion - section ${openSections.meetings ? 'open' : ''} `}>
-                    <div className="section-header" onClick={() => toggleSection('meetings')}>
+                <div className={`accordion-section ${openSections.meetings ? 'open' : ''}`}>
+                    <div className="section-header" aria-expanded={!!openSections.meetings} {...buttonProps(() => toggleSection('meetings'))}>
                         <Shield size={20} />
                         <h2>会議体の定義</h2>
                         {openSections.meetings ? <ChevronDown /> : <ChevronRight />}
@@ -463,8 +478,8 @@ const SettingsPage: React.FC = () => {
                                                     <strong>{def.name}</strong>
                                                     <div className="sub-text">{def.content}</div>
                                                 </td>
-                                                <td><span className="timing-text">{def.timing}</span></td>
-                                                <td>
+                                                <td data-label="時期・頻度"><span className="timing-text">{def.timing}</span></td>
+                                                <td data-label="参加役職">
                                                     <div className="role-mini-badges">
                                                         {def.roleIds.length > 0 ? def.roleIds.map(rid => (
                                                             <span key={rid} className="mini-badge">
@@ -475,8 +490,8 @@ const SettingsPage: React.FC = () => {
                                                 </td>
                                                 <td>
                                                     <div className="actions">
-                                                        <button className="icon-btn" onClick={() => setEditingMtgDef(def)}><Edit2 size={14} /></button>
-                                                        <button className="icon-btn delete" onClick={() => handleDeleteMtgDef(def.id)}><Trash2 size={14} /></button>
+                                                        <button className="icon-btn" onClick={() => setEditingMtgDef(def)} aria-label={`会議体「${def.name}」を編集`} title="編集"><Edit2 size={14} aria-hidden="true" /></button>
+                                                        <button className="icon-btn delete" onClick={() => handleDeleteMtgDef(def.id)} aria-label={`会議体「${def.name}」を削除`} title="削除"><Trash2 size={14} aria-hidden="true" /></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -508,8 +523,8 @@ const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* 5. 利用終了・クリーンアップ */}
-                <div className={`accordion - section danger ${openSections.cleanup ? 'open' : ''} `}>
-                    <div className="section-header" onClick={() => toggleSection('cleanup')}>
+                <div className={`accordion-section danger ${openSections.cleanup ? 'open' : ''}`}>
+                    <div className="section-header" aria-expanded={!!openSections.cleanup} {...buttonProps(() => toggleSection('cleanup'))}>
                         <AlertTriangle size={20} />
                         <h2>利用終了・データの消去</h2>
                         {openSections.cleanup ? <ChevronDown /> : <ChevronRight />}
@@ -539,8 +554,8 @@ const SettingsPage: React.FC = () => {
             {/* Modals for Complex Edits */}
             {editingRole && (
                 <div className="modal-overlay">
-                    <div className="modal-content mini">
-                        <h3>役職を編集</h3>
+                    <div className="modal-content mini" role="dialog" aria-modal="true" aria-labelledby="role-modal-title">
+                        <h3 id="role-modal-title">役職を編集</h3>
                         <form onSubmit={handleSaveRole}>
                             <input
                                 autoFocus
@@ -560,8 +575,8 @@ const SettingsPage: React.FC = () => {
 
             {editingTaskDef && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3>タスク定義の編集</h3>
+                    <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="taskdef-modal-title">
+                        <h3 id="taskdef-modal-title">タスク定義の編集</h3>
                         <form onSubmit={handleSaveTaskDef}>
                             <div className="form-group">
                                 <label>タイトル</label>
@@ -574,10 +589,10 @@ const SettingsPage: React.FC = () => {
                             <div className="form-row">
                                 <div className="form-group">
                                     <label>カテゴリ</label>
-                                    <select value={editingTaskDef.category} onChange={e => setEditingTaskDef({ ...editingTaskDef, category: e.target.value as any, trackResponseRate: e.target.value === 'union_member' })}>
-                                        <option value="union_member">🔴 組合員関連</option>
-                                        <option value="administrative">🔵 事務タスク</option>
-                                        <option value="committee">🟢 委員タスク</option>
+                                    <select value={editingTaskDef.category} onChange={e => setEditingTaskDef({ ...editingTaskDef, category: e.target.value as any })}>
+                                        <option value="union_member">組合員関連</option>
+                                        <option value="administrative">事務タスク</option>
+                                        <option value="committee">委員タスク</option>
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -589,18 +604,17 @@ const SettingsPage: React.FC = () => {
                                     </select>
                                 </div>
                             </div>
-                            {editingTaskDef.category === 'union_member' && (
-                                <div className="form-group checkbox-group" style={{ marginBottom: '1.5rem' }}>
-                                    <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={editingTaskDef.trackResponseRate || false}
-                                            onChange={e => setEditingTaskDef({ ...editingTaskDef, trackResponseRate: e.target.checked })}
-                                        />
-                                        回答率を記録してフォローする
-                                    </label>
-                                </div>
-                            )}
+                            <div className="form-group checkbox-group" style={{ marginBottom: '1.5rem' }}>
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={editingTaskDef.trackResponseRate || false}
+                                        onChange={e => setEditingTaskDef({ ...editingTaskDef, trackResponseRate: e.target.checked })}
+                                    />
+                                    回答率を測る
+                                </label>
+                                <p className="hint">オンにすると、この定型タスクから作ったタスクに回答率の記録欄が表示され、低いとダッシュボードで要注意になります。</p>
+                            </div>
                             <div className="form-group">
                                 <label>担当する役職 (複数選択可)</label>
                                 <div className="role-checkboxes">
@@ -636,7 +650,7 @@ const SettingsPage: React.FC = () => {
                                                 placeholder="サブタスクのタイトル..."
                                                 required
                                             />
-                                            <button type="button" className="icon-btn delete" onClick={() => handleDeleteSubtaskDef(sub.id)}>
+                                            <button type="button" className="icon-btn delete" onClick={() => handleDeleteSubtaskDef(sub.id)} aria-label="サブタスクを削除" title="削除">
                                                 <Trash2 size={14} />
                                             </button>
                                         </div>
@@ -657,8 +671,8 @@ const SettingsPage: React.FC = () => {
 
             {editingMtgDef && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3>会議体定義の編集</h3>
+                    <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="mtgdef-modal-title">
+                        <h3 id="mtgdef-modal-title">会議体定義の編集</h3>
                         <form onSubmit={handleSaveMtgDef}>
                             <div className="form-group">
                                 <label>会議体名</label>
@@ -701,32 +715,32 @@ const SettingsPage: React.FC = () => {
             }
 
             <style>{`
-                .settings-page { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+                .settings-page { max-width: var(--content-max-width); margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
                 .settings-accordion { display: flex; flex-direction: column; gap: 0.75rem; }
-                .accordion-section { border: 1px solid #334155; border-radius: 12px; background-color: var(--bg-card); overflow: hidden; }
+                .accordion-section { border: 1px solid var(--border); border-radius: var(--radius-lg); background-color: var(--bg-card); overflow: hidden; }
                 .section-header {
                     padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; cursor: pointer;
                     transition: background 0.2s; background-color: rgba(255, 255, 255, 0.02);
                 }
                 .section-header:hover { background-color: rgba(255, 255, 255, 0.05); }
-                .accordion-section.section-header:hover {
+                .accordion-section .section-header:hover {
                     background-color: rgba(255, 255, 255, 0.03);
                 }
 
-                .accordion-section.danger.section-header h2 {
+                .accordion-section.danger .section-header h2 {
                     color: #f87171;
                 }
 
-                .accordion-section.danger.section-header svg {
+                .accordion-section.danger .section-header svg {
                     color: #f87171;
                 }
                 .section-header h2 { font-size: 1.1rem; flex: 1; margin: 0; }
-                .section-content { padding: 1.5rem; border-top: 1px solid #334155; background-color: var(--bg-dark); }
-                .table-container { overflow-x: auto; width: 100%; border: 1px solid #334155; border-radius: 8px; background-color: rgba(255, 255, 255, 0.01); }
+                .section-content { padding: 1.5rem; border-top: 1px solid var(--border); background-color: var(--bg-dark); }
+                .table-container { overflow-x: auto; width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md); background-color: rgba(255, 255, 255, 0.01); }
 
                 /* Settings Table */
                 .settings-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 600px; }
-                .settings-table th, .settings-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; text-align: left; vertical-align: middle; }
+                .settings-table th, .settings-table td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
                 .settings-table th { color: var(--text-muted); font-weight: 600; font-size: 0.8rem; background-color: rgba(255, 255, 255, 0.03); white-space: nowrap; }
                 .sub-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem; white-space: normal; line-height: 1.4; }
                 .adding-row { background-color: rgba(59, 130, 246, 0.05); }
@@ -735,14 +749,34 @@ const SettingsPage: React.FC = () => {
                 
                 .inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; width: 100%; }
                 .inline-form input, .inline-form select {
-                    background-color: #0f172a; border: 1px solid #334155; color: white;
-                    padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; flex: 1; min-width: 140px;
+                    background-color: var(--bg-dark); border: 1px solid var(--border); color: white;
+                    padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85rem; flex: 1; min-width: 140px;
                 }
                 .add-inline-btn {
                     background-color: var(--primary); color: white; border: none; padding: 0.5rem 1.25rem;
-                    border-radius: 6px; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;
+                    border-radius: var(--radius-sm); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap;
                 }
                 .add-inline-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+                /* スマホでは横スクロールの表をやめ、1 行 = 1 枚のカードで表示する */
+                @media (max-width: 640px) {
+                    .table-container { border: none; background: none; overflow: visible; }
+                    .settings-table { display: block; min-width: 0; }
+                    .settings-table thead { display: none; }
+                    .settings-table tbody { display: flex; flex-direction: column; gap: 0.75rem; }
+                    .settings-table tr {
+                        display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem;
+                        padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-lg);
+                        background-color: rgba(255, 255, 255, 0.02);
+                    }
+                    .settings-table td { display: flex; align-items: center; gap: 0.5rem; padding: 0; border: none; }
+                    .settings-table td:first-child { flex: 1 1 0; min-width: 0; flex-direction: column; align-items: flex-start; gap: 0; }
+                    .settings-table td:last-child { order: 1; margin-left: auto; }
+                    .settings-table td[data-label] { order: 2; flex: 1 1 100%; }
+                    .settings-table td[data-label]::before { content: attr(data-label); min-width: 5em; font-size: 0.75rem; color: var(--text-muted); }
+                    .settings-table td[colspan] { flex: 1 1 100%; display: block; order: 0; }
+                    .settings-table tr.adding-row { background-color: rgba(59, 130, 246, 0.05); border-style: dashed; }
+                }
 
                 /* Responsive Adjustments */
                 @media(max-width: 768px) {
@@ -755,13 +789,16 @@ const SettingsPage: React.FC = () => {
                 }
 
                 /* Tags & Badges */
-                .prio-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+                .prio-tag { font-size: 0.75rem; padding: 2px 6px; border-radius: var(--radius-xs); font-weight: 700; text-transform: uppercase; }
                 .prio-tag.high { background-color: rgba(239, 68, 68, 0.2); color: var(--danger); }
                 .prio-tag.medium { background-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
                 .prio-tag.low { background-color: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
                 
+                .inline-check { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--text-main); white-space: nowrap; cursor: pointer; }
+                .rate-chip { display: inline-block; margin-top: 0.35rem; padding: 1px 8px; border-radius: var(--radius-pill); background-color: rgba(59, 130, 246, 0.15); color: #93c5fd; font-size: 0.75rem; font-weight: 600; }
+                .role-mini-badges .empty-hint { padding: 0; width: auto; text-align: left; }
                 .role-mini-badges { display: flex; flex-wrap: wrap; gap: 4px; }
-                .mini-badge { font-size: 0.65rem; background-color: #1e293b; border: 1px solid var(--primary); color: var(--primary); padding: 1px 4px; border-radius: 3px; }
+                .mini-badge { font-size: 0.75rem; background-color: var(--bg-card); border: 1px solid var(--primary); color: var(--primary); padding: 1px 4px; border-radius: 3px; }
                 .timing-text { font-size: 0.85rem; color: var(--warning); font-weight: 600; }
 
                 /* Personal Prefs Area */
@@ -769,26 +806,26 @@ const SettingsPage: React.FC = () => {
                 .setting-item label { font-size: 0.875rem; color: var(--text-muted); font-weight: 600; }
                 .setting-item.checkbox { flex-direction: row; align-items: center; margin-top: 1rem; }
                 .toggle-label { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 0.9rem; }
-                .hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-top: 0.5rem; }
+                .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; }
 
                 /* Export Area */
-                .export-area { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed #334155; }
+                .export-area { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed var(--border); }
                 .export-area h3 { font-size: 0.95rem; margin-bottom: 1rem; color: var(--text-main); }
                 .export-actions { display: flex; gap: 1rem; }
                 .export-btn {
-                    background: none; border: 1px solid #475569; color: var(--text-main);
-                    padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.85rem; display: flex;
+                    background: none; border: 1px solid var(--border-hover); color: var(--text-main);
+                    padding: 0.6rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; display: flex;
                     align-items: center; gap: 0.6rem; transition: all 0.2s;
                 }
-                .export-btn:hover { background-color: #334155; border-color: var(--primary); }
+                .export-btn:hover { background-color: var(--border); border-color: var(--primary); }
                 .export-btn.all:hover { border-color: var(--warning); }
 
                 .actions { display: flex; gap: 0.5rem; }
-                .role-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.75rem; background-color: #0f172a; border-radius: 8px; }
+                .role-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; padding: 0.75rem; background-color: var(--bg-dark); border-radius: var(--radius-md); }
                 .role-cb-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; padding: 4px; }
 
                 /* Subtasks in Modal */
-                .add-sub-btn { background: none; border: 1px solid var(--primary); color: var(--primary); font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+                .add-sub-btn { background: none; border: 1px solid var(--primary); color: var(--primary); font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius-xs); display: flex; align-items: center; gap: 4px; cursor: pointer; }
                 .add-sub-btn:hover { background-color: rgba(59, 130, 246, 0.1); }
                 .subtask-defs-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
                 .subtask-def-item { display: flex; align-items: center; gap: 0.5rem; }
@@ -804,7 +841,7 @@ const SettingsPage: React.FC = () => {
 
                 .alert-box {
                     display: flex; align-items: center; gap: 0.75rem;
-                    padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.8rem; line-height: 1.4;
+                    padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; line-height: 1.4;
                 }
                 .alert-box.warning {
                     background-color: rgba(245, 158, 11, 0.1); color: #fbbf24;
@@ -813,7 +850,7 @@ const SettingsPage: React.FC = () => {
 
                 .wipe-btn {
                     background-color: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid #ef4444;
-                    padding: 0.75rem 1rem; border-radius: 8px; font-weight: 600;
+                    padding: 0.75rem 1rem; border-radius: var(--radius-md); font-weight: 600;
                     display: flex; align-items: center; justify-content: center; gap: 0.5rem;
                     cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
                 }

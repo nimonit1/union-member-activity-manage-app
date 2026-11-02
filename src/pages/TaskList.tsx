@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { Task, TaskCategory, TaskStatus, Priority, TaskDefinition } from '../types';
-import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter, Edit3, ChevronDown, ChevronRight, Layout } from 'lucide-react';
+import { Plus, Copy, Trash2, Check, Clock, Edit2, X, Filter, Edit3, ChevronDown, ChevronRight, Layout, ClipboardList } from 'lucide-react';
 import MemoEditor from '../components/MemoEditor';
 import { MemoItem } from '../types';
 import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
 import ToastContainer, { useToast } from '../components/Toast';
+import { buttonProps } from '../utils/a11y';
+import { getDueInfo } from '../utils/dueDate';
+import { useModal } from '../utils/useModal';
+import CategoryDot from '../components/CategoryDot';
+import EmptyState from '../components/EmptyState';
+
+// 期限の表示。期限切れ / 本日 / 3日以内のときは、色とバッジで緊急度を示す
+const DueText: React.FC<{ dueDate?: string; status: TaskStatus }> = ({ dueDate, status }) => {
+  const { kind, label } = getDueInfo(dueDate, status);
+  return (
+    <>
+      <span className={`due-text ${kind}`}>期限: {dueDate || '未設定'}</span>
+      {label && <span className={`due-badge ${kind}`}>{label}</span>}
+    </>
+  );
+};
 
 const TaskList: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -19,6 +35,8 @@ const TaskList: React.FC = () => {
   const [globalMemos, setGlobalMemos] = useState<MemoItem[]>([]);
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const { confirmDialogProps, confirm } = useConfirm();
+  // 手動追加モーダルで選んだ種類（定型タスク）の ID。空なら種類を指定しない自由入力
+  const [newTaskTypeId, setNewTaskTypeId] = useState('');
   const { toasts, showToast, dismissToast } = useToast();
 
   useEffect(() => {
@@ -150,7 +168,30 @@ const TaskList: React.FC = () => {
     }
   };
 
+  // 種類を選ぶと、その定型タスクの設定（カテゴリ・優先度・回答率の測定など）を引き継ぐ
+  const handlePickTaskType = (defId: string) => {
+    setNewTaskTypeId(defId);
+    const def = taskDefs.find(d => d.id === defId);
+    if (!def) return;
+    setEditingTask(prev => prev && ({
+      ...prev,
+      category: def.category,
+      priority: def.priority,
+      title: prev.title || def.title,
+      description: prev.description || def.description,
+      trackResponseRate: !!def.trackResponseRate,
+      responseRate: def.trackResponseRate ? (prev.responseRate || 0) : undefined,
+      subtasks: (def.subtasks || []).map(sub => ({
+        id: `sub-${Math.random().toString(36).substr(2, 9)}`,
+        title: sub.title,
+        isCompleted: false,
+        order: sub.order,
+      })),
+    }));
+  };
+
   const openNewTaskModal = () => {
+    setNewTaskTypeId('');
     setEditingTask({
       category: activeTab,
       status: 'todo',
@@ -184,6 +225,9 @@ const TaskList: React.FC = () => {
     setEditingTask(null);
   };
 
+  // タスク編集モーダル: Esc で閉じる / 背面スクロール固定 / フォーカス復帰
+  useModal(!!editingTask, () => setEditingTask(null));
+
   return (
     <div className="task-page">
       <header className="page-header">
@@ -203,7 +247,7 @@ const TaskList: React.FC = () => {
       </header>
 
       <section className={`accordion-section templates-section ${isTemplatesOpen ? 'open' : ''}`}>
-        <div className="section-header" onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}>
+        <div className="section-header" aria-expanded={isTemplatesOpen} {...buttonProps(() => setIsTemplatesOpen(!isTemplatesOpen))}>
           <Layout size={20} />
           <h3>クイック作成 (定型タスク)</h3>
           {isTemplatesOpen ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
@@ -213,9 +257,7 @@ const TaskList: React.FC = () => {
             {visibleTemplates.map(def => (
               <button key={def.id} className="template-card" onClick={() => createFromTemplate(def.id)}>
                 <div className={`tpl-icon ${def.category}`}>
-                  {def.category === 'union_member' && '🔴'}
-                  {def.category === 'administrative' && '🔵'}
-                  {def.category === 'committee' && '🟢'}
+                  <CategoryDot category={def.category} />
                 </div>
                 <div className="tpl-text">
                   <span className="tpl-title">{def.title}</span>
@@ -228,24 +270,30 @@ const TaskList: React.FC = () => {
         )}
       </section>
 
-      <nav className="tab-nav">
+      <nav className="tab-nav" role="tablist" aria-label="タスクの種類">
         <button
+          role="tab"
+          aria-selected={activeTab === 'union_member'}
           className={`tab-btn ${activeTab === 'union_member' ? 'active' : ''}`}
           onClick={() => setActiveTab('union_member')}
         >
-          🔴 組合員関連タスク
+          <CategoryDot category="union_member" />組合員関連<span className="tab-suffix">タスク</span>
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'administrative'}
           className={`tab-btn ${activeTab === 'administrative' ? 'active' : ''}`}
           onClick={() => setActiveTab('administrative')}
         >
-          🔵 事務タスク
+          <CategoryDot category="administrative" />事務<span className="tab-suffix">タスク</span>
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'committee'}
           className={`tab-btn ${activeTab === 'committee' ? 'active' : ''}`}
           onClick={() => setActiveTab('committee')}
         >
-          🟢 委員タスク
+          <CategoryDot category="committee" />委員<span className="tab-suffix">タスク</span>
         </button>
       </nav>
 
@@ -263,17 +311,16 @@ const TaskList: React.FC = () => {
                 </div>
 
                 <div className="task-status-control">
-                  <span className="status-label">{getStatusLabel(task.status)}</span>
-                  <div className="status-btns">
+                  {task.status === 'on_hold' && <span className="status-label">{getStatusLabel(task.status)}</span>}
+                  <div className="status-btns" role="group" aria-label={`「${task.title}」のステータス`}>
                     {(['todo', 'in_progress', 'completed'] as TaskStatus[]).map(s => (
                       <button
                         key={s}
-                        className={`status-dot-btn ${task.status === s ? 'active' : ''} ${s}`}
+                        className={`status-seg-btn ${task.status === s ? 'active' : ''} ${s}`}
                         onClick={() => handleStatusChange(task.id, s)}
-                        title={getStatusLabel(s)}
-                        aria-label={getStatusLabel(s)}
+                        aria-pressed={task.status === s}
                       >
-                        <span className="status-dot-visual" />
+                        {getStatusLabel(s)}
                       </button>
                     ))}
                   </div>
@@ -341,8 +388,8 @@ const TaskList: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="date-display" onClick={() => setIsEditingDate(task.id)}>
-                      <span>期限: {task.dueDate || '未設定'}</span>
+                    <div className="date-display" {...buttonProps(() => setIsEditingDate(task.id))}>
+                      <DueText dueDate={task.dueDate} status={task.status} />
                       <button className="edit-btn-tiny" title="期限を設定">
                         <Edit2 size={12} />
                       </button>
@@ -354,27 +401,44 @@ const TaskList: React.FC = () => {
                   </button>
                 </div>
                 <div className="task-actions">
-                  <button className="icon-btn" title="詳細編集" onClick={() => setEditingTask(task)}><Edit2 size={16} /></button>
-                  <button className="icon-btn" title="複製" onClick={() => handleDuplicate(task)}><Copy size={16} /></button>
-                  <button className="icon-btn delete" onClick={() => handleDelete(task.id)} title="削除"><Trash2 size={16} /></button>
+                  <button className="icon-btn" title="詳細編集" aria-label={`「${task.title}」を詳細編集`} onClick={() => setEditingTask(task)}><Edit2 size={16} aria-hidden="true" /></button>
+                  <button className="icon-btn" title="複製" aria-label={`「${task.title}」を複製`} onClick={() => handleDuplicate(task)}><Copy size={16} aria-hidden="true" /></button>
+                  <button className="icon-btn delete" onClick={() => handleDelete(task.id)} title="削除" aria-label={`「${task.title}」を削除`}><Trash2 size={16} aria-hidden="true" /></button>
                 </div>
               </div>
             </div>
           ))
         ) : (
-          <div className="empty-state">該当するタスクはありません。</div>
+          <EmptyState
+            icon={<ClipboardList size={24} />}
+            title="該当するタスクはありません"
+            description="「手動で追加」か、クイック作成の定型タスクから登録できます。"
+            action={{ label: 'タスクを追加', onClick: openNewTaskModal }}
+          />
         )}
       </div>
 
       {
         editingTask && (
           <div className="modal-overlay">
-            <div className="modal-content">
+            <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
               <div className="modal-header">
-                <h2>{editingTask.id ? 'タスクを編集' : '新規タスク作成'}</h2>
-                <button className="close-btn" onClick={() => setEditingTask(null)}><X size={20} /></button>
+                <h2 id="task-modal-title">{editingTask.id ? 'タスクを編集' : '新規タスク作成'}</h2>
+                <button className="close-btn" onClick={() => setEditingTask(null)} aria-label="閉じる" title="閉じる"><X size={20} aria-hidden="true" /></button>
               </div>
               <form onSubmit={handleSaveTask}>
+                {!editingTask.id && (
+                  <div className="form-group">
+                    <label htmlFor="new-task-type">種類（定型タスク）</label>
+                    <select id="new-task-type" value={newTaskTypeId} onChange={e => handlePickTaskType(e.target.value)}>
+                      <option value="">種類を指定しない（自由入力）</option>
+                      {visibleTemplates.map(d => (
+                        <option key={d.id} value={d.id}>{d.title}</option>
+                      ))}
+                    </select>
+                    <p className="form-hint">種類を選ぶと、カテゴリ・優先度・回答率を測るかどうかが設定どおりになります。</p>
+                  </div>
+                )}
                 <div className="form-group">
                   <label>タイトル</label>
                   <input
@@ -398,12 +462,13 @@ const TaskList: React.FC = () => {
                   <div className="form-group">
                     <label>カテゴリ</label>
                     <select
+                      disabled={!editingTask.id && !!newTaskTypeId}
                       value={editingTask.category || 'union_member'}
                       onChange={e => setEditingTask({ ...editingTask, category: e.target.value as TaskCategory })}
                     >
-                      <option value="union_member">🔴 組合員関連</option>
-                      <option value="administrative">🔵 事務タスク</option>
-                      <option value="committee">🟢 委員タスク</option>
+                      <option value="union_member">組合員関連</option>
+                      <option value="administrative">事務タスク</option>
+                      <option value="committee">委員タスク</option>
                     </select>
                   </div>
                   <div className="form-group">
@@ -418,22 +483,24 @@ const TaskList: React.FC = () => {
                     </select>
                   </div>
                 </div>
-                {editingTask.category === 'union_member' && (
-                  <div className="form-group checkbox-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={editingTask.trackResponseRate || false}
-                        onChange={e => setEditingTask({ 
-                          ...editingTask, 
-                          trackResponseRate: e.target.checked,
-                          responseRate: e.target.checked ? (editingTask.responseRate || 0) : undefined
-                        })}
-                      />
-                      回答率を記録してフォローする
-                    </label>
-                  </div>
-                )}
+                <div className="form-group checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={editingTask.trackResponseRate || false}
+                      disabled={!editingTask.id && !!newTaskTypeId}
+                      onChange={e => setEditingTask({ 
+                        ...editingTask, 
+                        trackResponseRate: e.target.checked,
+                        responseRate: e.target.checked ? (editingTask.responseRate || 0) : undefined
+                      })}
+                    />
+                    回答率を測る
+                  </label>
+                  {!editingTask.id && newTaskTypeId && (
+                    <p className="form-hint">選んだ種類の設定に従います（設定画面で変更できます）。</p>
+                  )}
+                </div>
                 <div className="form-row">
                   <div className="form-group">
                     <label>期限</label>
@@ -489,15 +556,15 @@ const TaskList: React.FC = () => {
           display: flex;
           flex-direction: column;
           gap: 2rem;
-          max-width: 900px;
+          max-width: var(--content-max-width);
           margin: 0 auto;
         }
 
         /* アコーディオン共通スタイル */
         .accordion-section {
           background-color: var(--bg-card);
-          border: 1px solid #334155;
-          border-radius: 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
           overflow: hidden;
           margin-bottom: 1rem;
         }
@@ -525,14 +592,8 @@ const TaskList: React.FC = () => {
 
         .accordion-section .section-content {
           padding: 0 1.25rem 1.25rem;
-          border-top: 1px solid #334155;
+          border-top: 1px solid var(--border);
           padding-top: 1.25rem;
-        }
-
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
         }
 
         .filter-status {
@@ -540,23 +601,11 @@ const TaskList: React.FC = () => {
           color: var(--primary);
           background-color: rgba(59, 130, 246, 0.1);
           padding: 0.4rem 0.8rem;
-          border-radius: 20px;
+          border-radius: var(--radius-pill);
           display: flex;
           align-items: center;
           gap: 0.4rem;
           font-weight: 600;
-        }
-
-        .header-actions .primary-btn {
-          background-color: var(--primary);
-          color: white;
-          border: none;
-          padding: 0.6rem 1.25rem;
-          border-radius: 8px;
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
         }
 
         .tpl-text {
@@ -579,15 +628,6 @@ const TaskList: React.FC = () => {
           line-height: 1.4;
         }
 
-        .empty-hint {
-          font-size: 0.8rem;
-          color: var(--text-muted);
-          font-style: italic;
-          padding: 1rem;
-          text-align: center;
-          width: 100%;
-        }
-
         .template-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
@@ -596,9 +636,9 @@ const TaskList: React.FC = () => {
 
         .template-card {
           background-color: var(--bg-card);
-          border: 1px solid #334155;
+          border: 1px solid var(--border);
           padding: 1rem 1.25rem;
-          border-radius: 12px;
+          border-radius: var(--radius-lg);
           display: flex;
           align-items: center;
           gap: 1.25rem;
@@ -608,7 +648,7 @@ const TaskList: React.FC = () => {
         }
 
         .template-card:hover {
-          background-color: #334155;
+          background-color: var(--border);
           transform: translateY(-2px);
         }
 
@@ -624,9 +664,14 @@ const TaskList: React.FC = () => {
         .tab-nav {
           display: flex;
           gap: 1rem;
-          border-bottom: 1px solid #334155;
+          border-bottom: 1px solid var(--border);
           padding-bottom: 0.5rem;
+          /* 幅が足りないときは折り返さず横スクロールにする */
+          overflow-x: auto;
+          scrollbar-width: none;
         }
+
+        .tab-nav::-webkit-scrollbar { display: none; }
 
         .tab-btn {
           background: none;
@@ -635,6 +680,9 @@ const TaskList: React.FC = () => {
           color: var(--text-muted);
           font-weight: 600;
           position: relative;
+          white-space: nowrap;
+          flex: 0 0 auto;
+          min-height: 44px;
         }
 
         .tab-btn.active {
@@ -659,8 +707,8 @@ const TaskList: React.FC = () => {
 
         .task-card {
           background-color: var(--bg-card);
-          border: 1px solid #334155;
-          border-radius: 12px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
           padding: 1.25rem;
           display: flex;
           flex-direction: column;
@@ -694,9 +742,11 @@ const TaskList: React.FC = () => {
         }
 
         .priority-badge {
-          font-size: 0.625rem;
+          white-space: nowrap;
+          flex-shrink: 0;
+          font-size: 0.75rem;
           padding: 2px 6px;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
           font-weight: 700;
         }
 
@@ -710,11 +760,11 @@ const TaskList: React.FC = () => {
         }
 
         .task-status-control {
-          text-align: right;
           display: flex;
           flex-direction: column;
+          align-items: flex-end;
           gap: 0.5rem;
-          min-width: 100px;
+          flex-shrink: 0;
         }
 
         .status-label {
@@ -728,51 +778,58 @@ const TaskList: React.FC = () => {
           justify-content: flex-end;
         }
 
-        /* タップ領域を44px確保しつつ視覚的ドットは小さく */
-        .status-dot-btn {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
+        /* ステータス切替: 3 択のラベル付きセグメントボタン（色だけに頼らず文字で状態を示す） */
+        .status-btns {
+          display: inline-flex;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-md);
+          overflow: hidden;
+        }
+
+        .status-seg-btn {
+          min-height: 36px;
+          padding: 0.4rem 0.75rem;
           background: none;
           border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: background-color 0.15s;
+          border-left: 1px solid var(--border);
+          color: var(--text-muted);
+          font-size: 0.8rem;
+          font-weight: 600;
+          white-space: nowrap;
+          transition: background-color 0.15s, color 0.15s;
         }
 
-        .status-dot-btn:hover {
-          background-color: rgba(255, 255, 255, 0.08);
+        .status-seg-btn:first-child { border-left: none; }
+        .status-seg-btn:hover:not(.active) { background-color: rgba(255, 255, 255, 0.06); color: var(--text-main); }
+        .status-seg-btn.active.todo { background-color: var(--border); color: var(--text-main); }
+        .status-seg-btn.active.in_progress { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .status-seg-btn.active.completed { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .status-seg-btn:focus-visible { outline-offset: -2px; }
+
+        /* 期限の緊急度 */
+        .due-text.overdue { color: #f87171; font-weight: 600; }
+        .due-text.today { color: #fbbf24; font-weight: 600; }
+
+        .due-badge {
+          padding: 1px 8px;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          white-space: nowrap;
         }
-
-        .status-dot-visual {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          border: 2px solid transparent;
-          background-color: transparent;
-          display: block;
-          transition: all 0.2s ease;
-        }
-
-        .status-dot-btn.todo .status-dot-visual { border-color: #475569; }
-        .status-dot-btn.in_progress .status-dot-visual { border-color: var(--warning); }
-        .status-dot-btn.completed .status-dot-visual { border-color: var(--success); }
-
-        .status-dot-btn.active.todo .status-dot-visual { background-color: #475569; }
-        .status-dot-btn.active.in_progress .status-dot-visual { background-color: var(--warning); }
-        .status-dot-btn.active.completed .status-dot-visual { background-color: var(--success); }
+        .due-badge.overdue { background-color: rgba(239, 68, 68, 0.18); color: #f87171; }
+        .due-badge.today { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .due-badge.soon { background-color: rgba(148, 163, 184, 0.15); color: var(--text-main); }
 
         /* Subtasks Area */
         .subtasks-area {
           background-color: rgba(255, 255, 255, 0.02);
           padding: 0.75rem 1rem;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .subtask-header {
-          font-size: 0.7rem;
+          font-size: 0.75rem;
           color: var(--text-muted);
           font-weight: 700;
           margin-bottom: 0.5rem;
@@ -790,7 +847,7 @@ const TaskList: React.FC = () => {
           cursor: pointer;
           font-size: 0.85rem;
           padding: 2px 4px;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
           transition: background 0.2s;
         }
         .subtask-item:hover { background-color: rgba(255, 255, 255, 0.05); }
@@ -798,7 +855,7 @@ const TaskList: React.FC = () => {
         .subtask-check {
           width: 14px;
           height: 14px;
-          border: 1px solid #475569;
+          border: 1px solid var(--border-hover);
           border-radius: 3px;
           display: flex;
           align-items: center;
@@ -815,7 +872,7 @@ const TaskList: React.FC = () => {
         .response-rate-area {
           background-color: rgba(255, 255, 255, 0.03);
           padding: 1rem;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
         }
 
         .rate-header {
@@ -839,37 +896,24 @@ const TaskList: React.FC = () => {
 
         .rate-btn {
           flex: 1;
-          background-color: #334155;
+          background-color: var(--border);
           border: none;
           color: var(--text-main);
           padding: 0.4rem 0;
-          border-radius: 4px;
-          font-size: 0.7rem;
+          border-radius: var(--radius-xs);
+          font-size: 0.75rem;
           transition: all 0.1s ease;
         }
 
-        .rate-btn:hover { background-color: #475569; }
+        .rate-btn:hover { background-color: var(--border-hover); }
         .rate-btn.active { background-color: var(--primary); font-weight: 700; }
-
-        .form-group.checkbox-group {
-          margin-bottom: 1rem;
-        }
-
-        .checkbox-label {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.9rem;
-          cursor: pointer;
-          color: var(--text-main);
-        }
 
         .task-footer {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding-top: 0.75rem;
-          border-top: 1px solid #334155;
+          border-top: 1px solid var(--border);
         }
 
         .task-meta {
@@ -885,24 +929,13 @@ const TaskList: React.FC = () => {
           gap: 0.5rem;
         }
 
-        .icon-btn {
-          background: none;
-          border: none;
-          color: var(--text-muted);
-          padding: 4px;
-          border-radius: 4px;
-        }
-
-        .icon-btn:hover { background-color: #334155; color: var(--text-main); }
-        .icon-btn.delete:hover { color: var(--danger); }
-
         .date-display {
           display: flex;
           align-items: center;
           gap: 0.5rem;
           cursor: pointer;
           padding: 2px 4px;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
           transition: background 0.2s;
         }
 
@@ -922,11 +955,11 @@ const TaskList: React.FC = () => {
 
         .memo-btn-tiny {
           background: rgba(255, 255, 255, 0.05);
-          border: 1px solid #334155;
+          border: 1px solid var(--border);
           color: var(--text-muted);
-          font-size: 0.65rem;
+          font-size: 0.75rem;
           padding: 2px 6px;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
           display: flex;
           align-items: center;
           gap: 4px;
@@ -947,10 +980,10 @@ const TaskList: React.FC = () => {
         }
 
         .date-input {
-          background-color: #1e293b;
+          background-color: var(--bg-card);
           border: 1px solid var(--primary);
           color: white;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
           padding: 2px 4px;
           font-size: 0.75rem;
           font-family: inherit;
@@ -962,124 +995,42 @@ const TaskList: React.FC = () => {
           border: none;
           width: 20px;
           height: 20px;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        /* Modal Styles */
-        .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 1rem;
-        }
-
-        .modal-content {
-          background-color: var(--bg-card);
-          border: 1px solid #334155;
-          border-radius: 16px;
-          width: 100%;
-          max-width: 500px;
-          padding: 2rem;
-          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 2rem;
-        }
-
-        .modal-header h2 {
-          font-size: 1.25rem;
-          margin: 0;
-        }
-
-        .close-btn {
-          background: none;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-        }
-
-        .form-group {
-          margin-bottom: 1.5rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.5rem;
-        }
-
-        .form-group label {
-          font-size: 0.875rem;
-          color: var(--text-muted);
-          font-weight: 600;
-        }
-
-        .form-group input, .form-group textarea, .form-group select {
-          background-color: #0f172a;
-          border: 1px solid #334155;
-          color: white;
-          padding: 0.75rem;
-          border-radius: 8px;
-          font-family: inherit;
-          font-size: 1rem;
-        }
-
-        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-          outline: none;
-          border-color: var(--primary);
-        }
-
-        .modal-footer {
-          display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
-        }
-
-        .modal-footer button {
-          flex: 1;
-          padding: 0.75rem;
-          border-radius: 8px;
-          font-weight: 700;
-          font-size: 1rem;
-        }
-
-        .modal-footer .save-btn {
-          background-color: var(--primary);
-          color: white;
-          border: none;
-        }
-
-        .modal-footer .cancel-btn {
-          background-color: transparent;
-          border: 1px solid #334155;
-          color: var(--text-muted);
-        }
+        /* モーダル / フォーム / アイコンボタン等の共通スタイルは src/index.css に集約 */
 
         @media (max-width: 640px) {
           .template-grid { grid-template-columns: 1fr !important; }
           .rate-btns { flex-wrap: wrap; gap: 0.5rem; }
           .rate-btn { flex: 1 1 30%; font-size: 0.8rem; padding: 0.6rem 0; }
           .task-title { font-size: 1rem; }
-          .page-header h1 { font-size: 1.5rem; }
-          .modal-content { padding: 1.5rem; border-radius: 12px; }
+          .task-main { flex-direction: column; gap: 0.75rem; }
+          .task-status-control { align-items: stretch; }
+          .status-btns { display: flex; }
+          .status-seg-btn { flex: 1; min-height: 40px; }
+          .tab-nav { gap: 0.25rem; }
+          .tab-btn { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+          /* カード下部（期限 / メモ / 操作ボタン）が収まらないときは折り返す */
+          .task-footer { flex-wrap: wrap; gap: 0.5rem; }
+          .task-meta { flex-wrap: wrap; }
+          .task-actions { margin-left: auto; }
+          .date-display span { white-space: nowrap; }
+        }
+
+        @media (pointer: coarse) {
+          .memo-btn-tiny { min-height: 36px; }
+          .edit-btn-tiny { min-width: 32px; min-height: 32px; justify-content: center; }
+        }
+
+        /* 狭い画面では「〜タスク」の語尾を省いて 3 つのタブを 1 行に収める */
+        @media (max-width: 480px) {
+          .tab-suffix { display: none; }
+          .tab-nav { gap: 0; justify-content: space-between; }
+          .tab-btn { flex: 1 1 0; padding: 0.5rem 0.25rem; }
         }
       `}</style>
     </div >

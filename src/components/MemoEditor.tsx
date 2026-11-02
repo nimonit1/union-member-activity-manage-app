@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { db } from '../utils/db';
 import { storage } from '../utils/storage';
+import { useModal } from '../utils/useModal';
+import ConfirmDialog, { useConfirm } from './ConfirmDialog';
+import ToastContainer, { useToast } from './Toast';
 
 interface MemoEditorProps {
     memos: MemoItem[];
@@ -22,6 +25,10 @@ interface MemoEditorProps {
 
 const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initialMemoId, defaultLinkedEventId, defaultLinkedTaskId }) => {
     const [editingMemo, setEditingMemo] = useState<Partial<MemoItem> | null>(null);
+    const { toasts, showToast, dismissToast } = useToast();
+    const { confirmDialogProps, confirm } = useConfirm();
+    // 背面スクロール固定とフォーカス復帰。入力内容が失われやすいため Esc では閉じない
+    useModal(true);
     const editorRef = useRef<HTMLDivElement>(null);
     const isFirstLoad = useRef(true);
 
@@ -118,7 +125,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
             setTimeout(() => setShowSavedToast(false), 2000);
         } catch (error) {
             console.error('Save failed:', error);
-            alert('保存に失敗しました');
+            showToast('保存に失敗しました', 'error');
         }
     };
 
@@ -147,8 +154,12 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
         return `${todayStr}_${nextNn}_森`;
     };
 
-    const handleDeleteMemo = (id: string) => {
-        if (confirm('このメモを削除しますか？')) {
+    const handleDeleteMemo = async (id: string) => {
+        const ok = await confirm({
+            title: 'メモを削除',
+            message: 'このメモを削除しますか？この操作は取り消せません。',
+        });
+        if (ok) {
             onSave(memos.filter(m => m.id !== id));
             if (editingMemo?.id === id) setEditingMemo(null);
         }
@@ -196,7 +207,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
             setIsRecording(true);
         } catch (err) {
             console.error('録音に失敗しました:', err);
-            alert('マイクの使用を許可してください。');
+            showToast('マイクの使用を許可してください。ブラウザの設定を確認してください。', 'error');
         }
     };
 
@@ -207,29 +218,41 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
 
     return (
         <div className="memo-editor-overlay">
-            <div className="memo-editor-content">
+            <div className="memo-editor-content" role="dialog" aria-modal="true" aria-labelledby="memo-editor-title">
                 <div className="memo-header-global">
-                    <h3>個別メモ・記録</h3>
-                    <button className="close-all-btn" onClick={onClose}><X size={20} /></button>
+                    <h3 id="memo-editor-title">個別メモ・記録</h3>
+                    <button className="close-all-btn" onClick={onClose} aria-label="メモを閉じる" title="閉じる"><X size={20} aria-hidden="true" /></button>
                 </div>
 
                 <div className={`memos-sidebar ${editingMemo ? 'hidden' : ''}`}>
                     <div className="memo-types-bar">
-                        <button onClick={() => startNewMemo('text')} title="テキスト"><Type size={18} /></button>
-                        <button onClick={() => startNewMemo('voice')} title="音声"><Mic size={18} /></button>
+                        <button onClick={() => startNewMemo('text')} title="テキストメモを作成" aria-label="テキストメモを作成"><Type size={18} aria-hidden="true" /></button>
+                        <button onClick={() => startNewMemo('voice')} title="音声メモを作成" aria-label="音声メモを作成"><Mic size={18} aria-hidden="true" /></button>
                     </div>
 
                     <div className="memos-list">
                         {memos.length > 0 ? (
                             memos.map(memo => (
-                                <div key={memo.id} className="memo-item-card" onClick={() => memo.type === 'text' && setEditingMemo(memo)}>
+                                <div
+                                    key={memo.id}
+                                    className="memo-item-card"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => memo.type === 'text' && setEditingMemo(memo)}
+                                    onKeyDown={(e) => {
+                                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                                            e.preventDefault();
+                                            if (memo.type === 'text') setEditingMemo(memo);
+                                        }
+                                    }}
+                                >
                                     <div className="memo-meta">
                                         <span className="memo-type-icon">
                                             {memo.type === 'text' && <Type size={14} />}
                                             {memo.type === 'voice' && <Mic size={14} />}
                                         </span>
                                         <span className="memo-date">{new Date(memo.createdAt).toLocaleDateString()}</span>
-                                        <button className="del-btn-tiny" onClick={(e) => { e.stopPropagation(); handleDeleteMemo(memo.id); }}><Trash2 size={12} /></button>
+                                        <button className="del-btn-tiny" onClick={(e) => { e.stopPropagation(); handleDeleteMemo(memo.id); }} aria-label={`「${memo.title || '無題'}」を削除`} title="削除"><Trash2 size={14} aria-hidden="true" /></button>
                                     </div>
                                     <div className="memo-item-title">{memo.title || '(無題)'}</div>
                                 </div>
@@ -244,7 +267,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                     <div className="edit-area">
                         <div className="edit-header">
                             <span>{editingMemo.type === 'text' ? 'テキストメモ編集' : '音声録音'}</span>
-                            <button className="close-editor-btn" onClick={() => setEditingMemo(null)}><X size={18} /></button>
+                            <button className="close-editor-btn" onClick={() => setEditingMemo(null)} aria-label="編集を閉じる" title="編集を閉じる"><X size={18} aria-hidden="true" /></button>
                         </div>
                         <div className="edit-body">
                             {editingMemo.type === 'text' && (
@@ -252,6 +275,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                                     <div className="form-group row">
                                         <input 
                                             type="text"
+                                            aria-label="メモのタイトル"
                                             value={editingMemo.title || ''}
                                             onChange={e => setEditingMemo({ ...editingMemo, title: e.target.value })}
                                             placeholder="タイトルを入力 (空なら自動生成)"
@@ -261,39 +285,39 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
 
                                     <div className="rich-toolbar">
                                         <div className="toolbar-group">
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} title="太字"><Bold size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} title="斜体"><Italic size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} title="下線"><Underline size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} title="取り消し線"><Strikethrough size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} title="太字" aria-label="太字"><Bold size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} title="斜体" aria-label="斜体"><Italic size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} title="下線" aria-label="下線"><Underline size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} title="取り消し線" aria-label="取り消し線"><Strikethrough size={16} /></button>
                                         </div>
                                         <div className="toolbar-group separator">
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} title="箇条書き"><List size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} title="番号付きリスト"><ListOrdered size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'blockquote')} title="引用"><Quote size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'pre')} title="コード"><Code size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} title="箇条書き" aria-label="箇条書き"><List size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} title="番号付きリスト" aria-label="番号付きリスト"><ListOrdered size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'blockquote')} title="引用" aria-label="引用"><Quote size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'pre')} title="コード" aria-label="コード"><Code size={16} /></button>
                                         </div>
                                         <div className="toolbar-group separator">
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyLeft')} title="左寄せ"><AlignLeft size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyCenter')} title="中央揃え"><AlignCenter size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyRight')} title="右寄せ"><AlignRight size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyFull')} title="両端揃え"><AlignJustify size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyLeft')} title="左寄せ" aria-label="左寄せ"><AlignLeft size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyCenter')} title="中央揃え" aria-label="中央揃え"><AlignCenter size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyRight')} title="右寄せ" aria-label="右寄せ"><AlignRight size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('justifyFull')} title="両端揃え" aria-label="両端揃え"><AlignJustify size={16} /></button>
                                         </div>
                                         <div className="toolbar-group separator">
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('indent')} title="インデント"><Indent size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('outdent')} title="アウトデント"><Outdent size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('superscript')} title="上付き"><Superscript size={16} /></button>
-                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('subscript')} title="下付き"><Subscript size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('indent')} title="インデント" aria-label="インデント"><Indent size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('outdent')} title="アウトデント" aria-label="アウトデント"><Outdent size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('superscript')} title="上付き" aria-label="上付き"><Superscript size={16} /></button>
+                                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('subscript')} title="下付き" aria-label="下付き"><Subscript size={16} /></button>
                                         </div>
                                         <div className="toolbar-group separator">
-                                            <label title="文字色" className="color-tool"><Baseline size={16} /><input type="color" onInput={(e) => execCmd('foreColor', (e.target as HTMLInputElement).value)} /></label>
-                                            <label title="背景色" className="color-tool"><Highlighter size={16} /><input type="color" onInput={(e) => execCmd('hiliteColor', (e.target as HTMLInputElement).value)} defaultValue="#ffff00" /></label>
-                                            <select onChange={(e) => execCmd('fontName', e.target.value)} className="font-select">
+                                            <label title="文字色" className="color-tool" aria-label="文字色"><Baseline size={16} /><input type="color" onInput={(e) => execCmd('foreColor', (e.target as HTMLInputElement).value)} /></label>
+                                            <label title="背景色" className="color-tool" aria-label="背景色"><Highlighter size={16} /><input type="color" onInput={(e) => execCmd('hiliteColor', (e.target as HTMLInputElement).value)} defaultValue="#ffff00" /></label>
+                                            <select onChange={(e) => execCmd('fontName', e.target.value)} className="font-select" aria-label="フォント">
                                                 <option value="sans-serif">Sans Serif</option>
                                                 <option value="serif">Serif</option>
                                                 <option value="monospace">Monospace</option>
                                                 <option value="cursive">Cursive</option>
                                             </select>
-                                            <select onChange={(e) => execCmd('fontSize', e.target.value)} defaultValue="3" className="size-select">
+                                            <select onChange={(e) => execCmd('fontSize', e.target.value)} defaultValue="3" className="size-select" aria-label="文字サイズ">
                                                 <option value="1">極小</option>
                                                 <option value="2">小</option>
                                                 <option value="3">標準</option>
@@ -308,7 +332,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                                         <div className="template-selector-mini">
                                             <div className="template-list">
                                                 {templates.map((tpl: MemoTemplate) => (
-                                                    <button key={tpl.id} onClick={() => applyTemplate(tpl.content)} className="tpl-btn-tiny">
+                                                    <button key={tpl.id} onClick={() => applyTemplate(tpl.content)} className="tpl-btn-tiny" title={`テンプレート「${tpl.title}」を挿入`}>
                                                         {tpl.title}
                                                     </button>
                                                 ))}
@@ -325,6 +349,9 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                                             setEditingMemo(prev => prev ? { ...prev, content: newContent } : null);
                                         }}
                                         data-placeholder="ここにメモを入力..."
+                                        role="textbox"
+                                        aria-multiline="true"
+                                        aria-label="メモ本文"
                                         suppressContentEditableWarning={true}
                                     />
                                 </>
@@ -345,7 +372,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                             )}
                         </div>
                         <div className="edit-footer">
-                            {showSavedToast && <div className="save-toast">保存しました</div>}
+                            {showSavedToast && <div className="save-toast" role="status">保存しました</div>}
                             <button className="save-btn" onClick={handleSaveMemo}>
                                 <Save size={16} /> 保存
                             </button>
@@ -354,63 +381,78 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
                 )}
             </div>
 
+            <ConfirmDialog {...confirmDialogProps} />
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
             <style>{`
-                .memo-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem; }
-                .memo-editor-content { background: #1e293b; width: 100%; max-width: 1000px; height: 95vh; border-radius: 12px; display: grid; grid-template-columns: 280px 1fr; overflow: hidden; position: relative; border: 1px solid #334155; }
+                .memo-editor-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: calc(1rem + var(--safe-top)) calc(1rem + var(--safe-right)) calc(1rem + var(--safe-bottom)) calc(1rem + var(--safe-left)); }
+                .memo-editor-content { background: var(--bg-card); width: 100%; max-width: 1000px; height: 95vh; height: 95dvh; max-height: 100%; border-radius: var(--radius-lg); display: grid; grid-template-columns: 280px 1fr; overflow: hidden; position: relative; border: 1px solid var(--border); }
                 
                 @media (max-width: 768px) {
-                    .memo-editor-content { grid-template-columns: 1fr; margin-top: 1rem; height: 100vh; }
+                    .memo-editor-content { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); height: 100%; border-radius: 0; border: none; }
+                    .memo-editor-overlay { padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
+                    .rich-editor-area { min-height: 240px; padding: 1rem; }
                     .memos-sidebar { display: flex; }
                     .memos-sidebar.hidden { display: none; }
                 }
 
-                .memo-header-global { height: 60px; padding: 0 1.5rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; grid-column: 1 / -1; background: #0f172a; flex-shrink: 0; }
+                .memo-header-global { height: 60px; padding: 0 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; grid-column: 1 / -1; background: var(--bg-dark); flex-shrink: 0; }
                 .memo-header-global h3 { margin: 0; font-size: 1.1rem; color: #fff; }
 
-                .memos-sidebar { display: flex; flex-direction: column; border-right: 1px solid #334155; overflow: hidden; background: #1e293b; }
-                .memo-types-bar { display: flex; padding: 1rem; gap: 1rem; border-bottom: 1px solid #334155; justify-content: center; background: #111827; }
+                /* 閉じる / 削除ボタン（以前はクラスが未定義でブラウザ標準の白いボタンになっていた） */
+                .close-all-btn, .close-editor-btn, .del-btn-tiny { display: inline-flex; align-items: center; justify-content: center; background: none; border: none; color: var(--text-muted); border-radius: var(--radius-sm); min-width: 36px; min-height: 36px; padding: 6px; }
+                .close-all-btn:hover, .close-editor-btn:hover { background: var(--border); color: #fff; }
+                .del-btn-tiny { min-width: 32px; min-height: 32px; padding: 4px; }
+                .del-btn-tiny:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+                @media (pointer: coarse) {
+                    .close-all-btn, .close-editor-btn, .del-btn-tiny { min-width: 44px; min-height: 44px; }
+                    .rich-toolbar button, .color-tool { width: 40px !important; height: 40px !important; }
+                }
+
+                .memos-sidebar { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; background: var(--bg-card); }
+                .memo-types-bar { display: flex; padding: 1rem; gap: 1rem; border-bottom: 1px solid var(--border); justify-content: center; background: #111827; }
                 .memo-types-bar button { background: #1f2937; border: 1px solid #374151; color: white; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
                 .memo-types-bar button:hover { background-color: var(--primary); transform: translateY(-2px); border-color: var(--primary); }
                 
                 .memos-list { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
-                .memo-item-card { background: rgba(255,255,255,0.02); border: 1px solid #334155; border-radius: 8px; padding: 0.75rem; cursor: pointer; transition: all 0.2s; }
+                .memo-item-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.75rem; cursor: pointer; transition: all 0.2s; }
                 .memo-item-card:hover { border-color: var(--primary); background: rgba(59, 130, 246, 0.05); }
-                .memo-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.65rem; color: var(--text-muted); }
+                .memo-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.75rem; color: var(--text-muted); }
                 .memo-item-title { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-                .edit-area { flex: 1; background: #0f172a; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-                .edit-header { height: 50px; padding: 0 1.5rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #111827; flex-shrink: 0; }
+                .edit-area { flex: 1; background: var(--bg-dark); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+                .edit-header { height: 50px; padding: 0 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #111827; flex-shrink: 0; }
                 .edit-header span { font-size: 0.85rem; font-weight: 700; color: var(--primary); }
 
                 .edit-body { flex: 1; padding: 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
-                .title-input-inline { background: transparent; border: none; border-bottom: 2px solid #334155; color: white; padding: 0.5rem 0; font-size: 1.25rem; font-weight: 700; width: 100%; outline: none; transition: border-color 0.2s; }
+                .title-input-inline { background: transparent; border: none; border-radius: 0; border-bottom: 2px solid var(--border); color: white; padding: 0.5rem 0; font-size: 1.25rem; font-weight: 700; width: 100%; outline: none; transition: border-color 0.2s; }
                 .title-input-inline:focus { border-color: var(--primary); }
 
-                .rich-toolbar { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; position: sticky; top: 0; z-index: 10; }
+                .rich-toolbar { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; position: sticky; top: 0; z-index: 10; }
                 .toolbar-group { display: flex; gap: 0.15rem; }
-                .toolbar-group.separator { border-left: 1px solid #475569; padding-left: 0.25rem; margin-left: 0.25rem; }
-                .rich-toolbar button, .color-tool { background: transparent; border: 1px solid transparent; color: #cbd5e1; width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative; }
-                .rich-toolbar button:hover, .color-tool:hover { background: #334155; color: #fff; border-color: #475569; }
+                .toolbar-group.separator { border-left: 1px solid var(--border-hover); padding-left: 0.25rem; margin-left: 0.25rem; }
+                .rich-toolbar button, .color-tool { background: transparent; border: 1px solid transparent; color: #cbd5e1; width: 32px; height: 32px; border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; position: relative; }
+                .rich-toolbar button:hover, .color-tool:hover { background: var(--border); color: #fff; border-color: var(--border-hover); }
                 .color-tool input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
-                .font-select, .size-select { background: #0f172a; color: #cbd5e1; border: 1px solid #334155; border-radius: 4px; padding: 2px 4px; font-size: 0.75rem; outline: none; }
+                .font-select, .size-select { background: var(--bg-dark); color: #cbd5e1; border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 2px 4px; font-size: 0.75rem; outline: none; }
 
-                .template-selector-mini { background: #111827; padding: 0.5rem; border-radius: 6px; border: 1px solid #334155; }
+                .template-selector-mini { background: #111827; padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border); }
                 .template-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-                .tpl-btn-tiny { background: #334155; border: 1px solid #475569; color: #94a3b8; font-size: 0.65rem; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+                .tpl-btn-tiny { background: var(--border); border: 1px solid var(--border-hover); color: #94a3b8; font-size: 0.75rem; padding: 4px 10px; border-radius: var(--radius-xs); cursor: pointer; }
                 .tpl-btn-tiny:hover { background: var(--primary); color: #fff; }
 
-                .rich-editor-area { flex: 1; background: #111827; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; color: #e2e8f0; font-size: 1rem; line-height: 1.6; outline: none; min-height: 400px; overflow-y: auto; position: relative; }
+                .rich-editor-area { flex: 1; background: #111827; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.5rem; color: #e2e8f0; font-size: 1rem; line-height: 1.6; outline: none; min-height: 400px; overflow-y: auto; position: relative; }
                 .rich-editor-area:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1); }
                 .rich-editor-area:empty:before { content: attr(data-placeholder); color: #64748b; pointer-events: none; position: absolute; }
-                .rich-editor-area blockquote { border-left: 4px solid var(--primary); padding-left: 1rem; margin: 1rem 0; color: #94a3b8; font-style: italic; background: rgba(255,255,255,0.02); }
-                .rich-editor-area pre { background: #000; padding: 1rem; border-radius: 6px; font-family: 'Courier New', Courier, monospace; overflow-x: auto; margin: 1rem 0; }
+                .rich-editor-area blockquote { border-left: 4px solid var(--primary); padding-left: 1rem; margin: 1rem 0; color: #94a3b8; background: rgba(255,255,255,0.02); }
+                .rich-editor-area pre { background: #000; padding: 1rem; border-radius: var(--radius-sm); font-family: 'Courier New', Courier, monospace; overflow-x: auto; margin: 1rem 0; }
                 .rich-editor-area ul, .rich-editor-area ol { padding-left: 2rem; margin: 1rem 0; }
                 
-                .edit-footer { height: 60px; padding: 0 1.5rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; align-items: center; background: #0f172a; flex-shrink: 0; }
-                .save-btn { background: var(--primary); color: white; border: none; padding: 0.6rem 2.5rem; border-radius: 8px; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s; }
-                .save-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+                .edit-footer { height: 60px; padding: 0 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; align-items: center; background: var(--bg-dark); flex-shrink: 0; }
+                .edit-footer .save-btn { background: var(--primary); color: white; border: none; min-height: 44px; padding: 0.6rem 2.5rem; border-radius: var(--radius-md); font-weight: 700; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; transition: all 0.2s; }
+                .edit-footer .save-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-                .save-toast { background: var(--success); color: white; padding: 0.4rem 1rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; animation: fade-in-out 2s forwards; }
+                .save-toast { background: var(--success); color: white; padding: 0.4rem 1rem; border-radius: var(--radius-xs); font-size: 0.8rem; font-weight: 700; animation: fade-in-out 2s forwards; }
                 @keyframes fade-in-out {
                     0% { opacity: 0; transform: translateX(10px); }
                     15% { opacity: 1; transform: translateX(0); }
@@ -420,7 +462,7 @@ const MemoEditor: React.FC<MemoEditorProps> = ({ memos, onSave, onClose, initial
 
                 .voice-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rem; }
                 .record-start-btn, .recording-btn { width: 120px; height: 120px; border-radius: 50%; border: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
-                .record-start-btn { background: #334155; color: white; }
+                .record-start-btn { background: var(--border); color: white; }
                 .record-start-btn:hover { background: var(--primary); }
                 .recording-btn { background: var(--danger); color: white; }
                 

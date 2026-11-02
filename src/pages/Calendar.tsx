@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { ScheduleEvent, Task, MeetingDefinition, Role, MemoItem, TravelExpenseItem, TravelRoute } from '../types';
-import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Edit3, Shield, Calendar, LayoutList } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, MapPin, Wallet, Trash2, Clock, Save, X, Filter, Edit3, Shield, Calendar, CalendarX, LayoutList } from 'lucide-react';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import MemoEditor from '../components/MemoEditor';
 import ConfirmDialog, { useConfirm } from '../components/ConfirmDialog';
+import { buttonProps } from '../utils/a11y';
+import { useModal } from '../utils/useModal';
+import CategoryDot from '../components/CategoryDot';
+import EmptyState from '../components/EmptyState';
 
 const CalendarPage: React.FC = () => {
     const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -152,12 +156,12 @@ const CalendarPage: React.FC = () => {
                         <span className="all-day-label">終日 / 時間指定なし</span>
                         <div className="all-day-items">
                             {allDayEvents.map(e => (
-                                <div key={e.id} className={`event-item-mini ${e.category} ${e.status === 'completed' ? 'completed' : ''}`} onClick={() => { setEditingEventId(e.id); setEditFormData({ ...e }); }}>
+                                <div key={e.id} className={`event-item-mini ${e.category} ${e.status === 'completed' ? 'completed' : ''}`} {...buttonProps(() => { setEditingEventId(e.id); setEditFormData({ ...e }); })}>
                                     <span className="title">{e.title}</span>
                                 </div>
                             ))}
                             {dateTasks.map(t => (
-                                <div key={t.id} className={`task-item-mini ${t.status === 'completed' ? 'completed' : ''}`} onClick={() => { setEditingTaskId(t.id); setTaskEditFormData({ ...t }); }}>
+                                <div key={t.id} className={`task-item-mini ${t.status === 'completed' ? 'completed' : ''}`} {...buttonProps(() => { setEditingTaskId(t.id); setTaskEditFormData({ ...t }); })}>
                                     <span className="title">{t.title}</span>
                                 </div>
                             ))}
@@ -335,6 +339,9 @@ const CalendarPage: React.FC = () => {
         }
     };
 
+    // 会議体モーダル: Esc で閉じる / 背面スクロール固定 / フォーカス復帰
+    useModal(showMtgModal, () => setShowMtgModal(false));
+
     return (
         <div className="calendar-page">
             <header className="page-header">
@@ -343,6 +350,7 @@ const CalendarPage: React.FC = () => {
                     <div className="filter-area">
                         <Filter size={16} />
                         <select
+                            aria-label="役職で絞り込み"
                             value={filterRoleId}
                             onChange={(e) => setFilterRoleId(e.target.value)}
                             className="role-filter-select"
@@ -356,9 +364,9 @@ const CalendarPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="month-nav">
-                        <button className="icon-btn" onClick={prevMonth}><ChevronLeft /></button>
-                        <span className="current-month-label">{year}年 {month + 1}月</span>
-                        <button className="icon-btn" onClick={nextMonth}><ChevronRight /></button>
+                        <button className="icon-btn" onClick={prevMonth} aria-label="前の月" title="前の月"><ChevronLeft aria-hidden="true" /></button>
+                        <span className="current-month-label" aria-live="polite">{year}年 {month + 1}月</span>
+                        <button className="icon-btn" onClick={nextMonth} aria-label="次の月" title="次の月"><ChevronRight aria-hidden="true" /></button>
                     </div>
                 </div>
             </header>
@@ -379,7 +387,10 @@ const CalendarPage: React.FC = () => {
                                     <div
                                         key={idx}
                                         className={`calendar-day ${day === null ? 'empty' : ''} ${day && getDayString(day) === selectedDate ? 'selected' : ''} ${day && getDayString(day) === new Date().toLocaleDateString('sv') ? 'today' : ''}`}
-                                        onClick={() => day && setSelectedDate(getDayString(day))}
+                                        {...(day ? buttonProps(() => setSelectedDate(getDayString(day))) : {})}
+                                        aria-label={day ? `${month + 1}月${day}日${dayEvents.length + dayTasks.length > 0 ? `、予定・タスク${dayEvents.length + dayTasks.length}件` : ''}` : undefined}
+                                        aria-pressed={day ? getDayString(day) === selectedDate : undefined}
+                                        aria-current={day && getDayString(day) === new Date().toLocaleDateString('sv') ? 'date' : undefined}
                                     >
                                         {day && (
                                             <>
@@ -460,7 +471,7 @@ const CalendarPage: React.FC = () => {
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div className="travel-display-mode" onClick={() => setEditingExpenseId(te.id)}>
+                                                    <div className="travel-display-mode" {...buttonProps(() => setEditingExpenseId(te.id))}>
                                                         <div className="travel-header">
                                                             <strong>{te.title || '（無題の移動）'}</strong>
                                                             <span className="total">¥{(te.totalAmount || 0).toLocaleString()}</span>
@@ -576,7 +587,7 @@ const CalendarPage: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className={`event-display-card ${event.status === 'completed' ? 'completed' : ''}`} onClick={() => handleStartEdit(event)}>
+                                                    <div className={`event-display-card ${event.status === 'completed' ? 'completed' : ''}`} {...buttonProps(() => handleStartEdit(event))}>
                                                         <div className="ev-header">
                                                             <div className="ev-left">
                                                                 <span className={`ev-cat-tag ${event.category}`}>{event.category}</span>
@@ -644,10 +655,10 @@ const CalendarPage: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className={`task-display-card ${task.status}`} onClick={() => handleStartTaskEdit(task)}>
+                                                    <div className={`task-display-card ${task.status}`} {...buttonProps(() => handleStartTaskEdit(task))}>
                                                         <div className="ev-header">
                                                             <div className="ev-left">
-                                                                <span className="task-badge">{task.category === 'union_member' ? '🔴 組合員対応' : '🔵 事務タスク'}</span>
+                                                                <span className="task-badge"><CategoryDot category={task.category} />{task.category === 'union_member' ? '組合員対応' : task.category === 'committee' ? '委員タスク' : '事務タスク'}</span>
                                                                 {task.status === 'completed' && <span className="completed-badge">完了</span>}
                                                             </div>
                                                             <span className="task-status-tag">{task.status === 'completed' ? '完了' : '期限日'}</span>
@@ -673,7 +684,7 @@ const CalendarPage: React.FC = () => {
                                         ))}
 
                                         {getFilteredEvents(selectedDate).length === 0 && tasks.filter(t => t.dueDate === selectedDate).length === 0 && (
-                                            <div className="empty-state">この日の予定・タスクはありません。</div>
+                                            <EmptyState icon={<CalendarX size={24} />} title="この日の予定・タスクはありません" description="右上の「追加」から登録できます。" />
                                         )}
                                     </div>
                                 )}
@@ -701,10 +712,10 @@ const CalendarPage: React.FC = () => {
 
             {showMtgModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
+                    <div className="modal-content" role="dialog" aria-modal="true" aria-labelledby="mtg-modal-title">
                         <div className="modal-header">
-                            <h2>会議体定義から作成</h2>
-                            <button className="close-btn" onClick={() => setShowMtgModal(false)}><X size={20} /></button>
+                            <h2 id="mtg-modal-title">会議体定義から作成</h2>
+                            <button className="close-btn" onClick={() => setShowMtgModal(false)} aria-label="閉じる" title="閉じる"><X size={20} aria-hidden="true" /></button>
                         </div>
                         <div className="mtg-grid">
                             {mtgDefs.filter(d => {
@@ -734,20 +745,20 @@ const CalendarPage: React.FC = () => {
             )}
 
             <style>{`
-        .calendar-page { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+        .calendar-page { max-width: var(--content-max-width); margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
         .calendar-layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; }
         @media (max-width: 1024px) { .calendar-layout { grid-template-columns: 1fr; } }
 
-        .month-nav { display: flex; align-items: center; gap: 1rem; background-color: var(--bg-card); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #334155; width: fit-content; }
+        .month-nav { display: flex; align-items: center; gap: 1rem; background-color: var(--bg-card); padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border); width: fit-content; }
         .current-month-label { font-weight: 700; font-size: 1.1rem; min-width: 120px; text-align: center; }
 
-        .calendar-grid-container { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
-        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background-color: #1e293b; border-bottom: 1px solid #334155; }
+        .calendar-grid-container { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background-color: var(--bg-card); border-bottom: 1px solid var(--border); }
         .weekday-label { padding: 0.75rem; text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .calendar-day { height: 100px; padding: 0.5rem; border-right: 1px solid #334155; border-bottom: 1px solid #334155; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; }
+        .calendar-day { height: 100px; padding: 0.5rem; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 0.5rem; }
         .calendar-day:nth-child(7n) { border-right: none; }
-        .calendar-day:hover:not(.empty) { background-color: #334155; }
+        .calendar-day:hover:not(.empty) { background-color: var(--border); }
         .calendar-day.selected { background-color: rgba(59, 130, 246, 0.2); border: 1px solid var(--primary); z-index: 10; }
         .calendar-day.today { background-color: rgba(59, 130, 246, 0.05); }
         .calendar-day.today .day-number { color: var(--primary); font-weight: 800; }
@@ -765,31 +776,37 @@ const CalendarPage: React.FC = () => {
         .task-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; border: 1px solid rgba(255,255,255,0.2); }
         .task-dot.completed { background-color: #64748b !important; opacity: 0.6; }
         /* 3件超えたときの件数ラベル */
-        .day-more { font-size: 0.55rem; color: var(--text-muted); line-height: 1; white-space: nowrap; }
+        .day-more { font-size: 0.75rem; color: var(--text-muted); line-height: 1; white-space: nowrap; }
 
-        .detail-panel { background-color: var(--bg-card); border: 1px solid #334155; border-radius: 12px; padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
-        .detail-tabs { display: flex; border-bottom: 1px solid #334155; background-color: #1e293b; }
+        .detail-panel { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 0; height: fit-content; position: sticky; top: 1.5rem; overflow: hidden; }
+        .detail-tabs { display: flex; border-bottom: 1px solid var(--border); background-color: var(--bg-card); }
         .detail-tab-btn { flex: 1; padding: 1rem; border: none; background: none; color: var(--text-muted); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; }
         .detail-tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
         .schedule-tab-content, .travel-tab-content { padding: 1.5rem; }
         
-        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .add-actions { display: flex; gap: 0.5rem; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; }
+        .section-header h3 { font-size: 1.05rem; }
+        .add-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+
+        /* 「会議体」「追加」ボタン（以前はクラスが未定義でブラウザ標準の白いボタンになり、文字が縦書きに潰れていた） */
+        .small-primary-btn { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 36px; padding: 0.4rem 0.75rem; background-color: var(--primary); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; white-space: nowrap; transition: background-color 0.15s ease; }
+        .small-primary-btn:hover { background-color: var(--primary-dark); }
+        .empty-state-panel { text-align: center; color: var(--text-muted); font-size: 0.875rem; padding: 2rem 1rem; background-color: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
         .event-list { display: flex; flex-direction: column; gap: 1rem; }
-        .ev-memo { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; border-top: 1px solid #334155; padding-top: 0.5rem; font-style: italic; }
+        .ev-memo { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
 
         .mtg-grid { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
-        .mtg-card { background-color: rgba(255, 255, 255, 0.03); border: 1px solid #334155; border-radius: 8px; padding: 1rem; display: flex; align-items: center; justify-content: space-between; text-align: left; transition: all 0.2s; }
+        .mtg-card { background-color: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; display: flex; align-items: center; justify-content: space-between; text-align: left; transition: all 0.2s; }
         .mtg-card:hover { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
         .mtg-card-info { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
         .mtg-card-info strong { font-size: 1rem; color: #ffffff; }
         .mtg-card-info .timing { font-size: 0.75rem; color: var(--warning); font-weight: 600; }
         .mtg-card-info p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
 
-        .event-display-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid #334155; border-radius: 10px; padding: 1rem; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+        .event-display-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
         .event-display-card:hover { transform: translateY(-2px); border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
         .ev-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-        .ev-cat-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-weight: 700; border: 1px solid #475569; }
+        .ev-cat-tag { font-size: 0.75rem; padding: 2px 6px; border-radius: var(--radius-xs); text-transform: uppercase; font-weight: 700; border: 1px solid var(--border-hover); }
         .ev-cat-tag.meeting { color: #60a5fa; border-color: #60a5fa; }
         .ev-cat-tag.negotiation { color: #f87171; border-color: #f87171; }
         .ev-time { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); }
@@ -797,81 +814,81 @@ const CalendarPage: React.FC = () => {
         .ev-loc, .ev-expense { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem; }
         .ev-expense { color: var(--success); font-weight: 600; }
         .ev-memos-row { margin-top: 0.5rem; display: flex; gap: 0.5rem; }
-        .memo-btn-tiny { background: rgba(255, 255, 255, 0.05); border: 1px solid #334155; color: var(--text-muted); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+        .memo-btn-tiny { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); color: var(--text-muted); font-size: 0.75rem; padding: 2px 6px; border-radius: var(--radius-xs); display: flex; align-items: center; gap: 4px; cursor: pointer; }
         .memo-btn-tiny:hover { background-color: rgba(255, 255, 255, 0.1); color: var(--text-main); }
-        .ev-hover-hint { position: absolute; bottom: 0.5rem; right: 0.5rem; font-size: 0.65rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
+        .ev-hover-hint { position: absolute; bottom: 0.5rem; right: 0.5rem; font-size: 0.75rem; color: var(--primary); opacity: 0; transition: opacity 0.2s; }
         .event-display-card:hover .ev-hover-hint { opacity: 1; }
         .event-display-card.completed { opacity: 0.6; filter: grayscale(0.5); }
         .event-display-card.completed .ev-title { text-decoration: line-through; color: var(--text-muted); }
-        .completed-badge { font-size: 0.65rem; background-color: #1e293b; color: var(--text-muted); border: 1px solid #475569; padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 0.5rem; }
+        .completed-badge { font-size: 0.75rem; background-color: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-hover); padding: 1px 4px; border-radius: 3px; font-weight: 700; margin-left: 0.5rem; }
         .ev-left { display: flex; align-items: center; }
 
-        .filter-area { display: flex; align-items: center; gap: 0.5rem; background-color: var(--bg-card); padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid #334155; }
-        .role-filter-select { background: none; border: none; color: var(--primary); font-size: 0.85rem; font-weight: 700; outline: none; cursor: pointer; }
-        .role-filter-select option { background-color: #1e293b; color: white; }
-        .edit-status { background-color: #334155; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; flex: 1; }
+        .filter-area { display: flex; align-items: center; gap: 0.5rem; background-color: var(--bg-card); padding: 0.4rem 0.8rem; border-radius: var(--radius-md); border: 1px solid var(--border); }
+        .role-filter-select { background: none; border: none; color: var(--primary); font-size: 0.85rem; font-weight: 700; padding: 0.25rem 0; min-height: 32px; min-width: 0; max-width: 100%; flex: 1; cursor: pointer; }
+        .role-filter-select option { background-color: var(--bg-card); color: white; }
+        .edit-status { background-color: var(--border); color: white; border: none; padding: 4px 8px; border-radius: var(--radius-xs); font-size: 0.875rem; flex: 1; }
 
-        .travel-item-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid #334155; border-radius: 10px; margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
+        .travel-item-card { background-color: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 1rem; cursor: pointer; transition: all 0.2s; }
         .travel-item-card:hover:not(.editing) { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.05); }
-        .travel-item-card.editing { border-color: var(--primary); background-color: #0f172a; padding: 1rem; cursor: default; }
+        .travel-item-card.editing { border-color: var(--primary); background-color: var(--bg-dark); padding: 1rem; cursor: default; }
         .travel-display-mode { padding: 1rem; }
         .travel-edit-mode { display: flex; flex-direction: column; gap: 1rem; }
-        .edit-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+        .edit-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
         .travel-title-input { background: none; border: none; color: white; font-size: 1rem; font-weight: 700; flex: 1; outline: none; }
-        .done-btn { background-color: var(--primary); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+        .done-btn { background-color: var(--primary); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: var(--radius-xs); font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
         
         .travel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
         .travel-header strong { font-size: 0.9rem; color: #ffffff; }
         .travel-header .total { color: var(--success); font-weight: 700; font-size: 0.9rem; }
         .travel-routes { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .route-tag { font-size: 0.7rem; background-color: #334155; color: var(--text-muted); padding: 2px 8px; border-radius: 4px; }
-        .empty-route { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
-        .del-btn-tiny { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; }
+        .route-tag { font-size: 0.75rem; background-color: var(--border); color: var(--text-muted); padding: 2px 8px; border-radius: var(--radius-xs); }
+        .empty-route { font-size: 0.75rem; color: var(--text-muted); }
+        .del-btn-tiny { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: var(--radius-xs); }
         .del-btn-tiny:hover { color: var(--danger); background-color: rgba(239, 68, 68, 0.1); }
         .task-display-card.completed { opacity: 0.5; filter: grayscale(1); border-style: solid; }
-        .task-badge { font-size: 0.65rem; color: #10b981; font-weight: 700; }
-        .task-status-tag { font-size: 0.65rem; color: var(--text-muted); }
+        .task-badge { font-size: 0.75rem; color: #10b981; font-weight: 700; }
+        .task-status-tag { font-size: 0.75rem; color: var(--text-muted); }
         .task-rate { font-size: 0.75rem; color: var(--primary); font-weight: 700; margin-top: 0.5rem; }
 
-        .event-edit-form { display: flex; flex-direction: column; gap: 1rem; border: 1px solid var(--primary); border-radius: 10px; padding: 1rem; background-color: #0f172a; }
-        .edit-title { background: none; border: none; border-bottom: 2px solid var(--primary); color: white; font-size: 1.1rem; font-weight: 700; padding: 4px 0; width: 100%; }
+        .event-edit-form { display: flex; flex-direction: column; gap: 1rem; border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 1rem; background-color: var(--bg-dark); }
+        .edit-title { background: none; border: none; border-radius: 0; border-bottom: 2px solid var(--primary); color: white; font-size: 1.1rem; font-weight: 700; padding: 4px 0; width: 100%; }
         .edit-row { display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted); font-size: 0.875rem; }
-        .edit-row input { background: none; border: 1px solid #334155; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.875rem; }
-        .edit-loc { flex: 1; border: none !important; border-bottom: 1px solid #334155 !important; border-radius: 0 !important; }
-        .edit-cat { background-color: #334155; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 0.875rem; }
-        .edit-desc { background-color: #334155; color: white; border: 1px solid #475569; padding: 8px; border-radius: 4px; font-size: 0.875rem; width: 100%; resize: vertical; margin-top: 0.5rem; }
+        .edit-row input { background: none; border: 1px solid var(--border); color: white; padding: 4px 8px; border-radius: var(--radius-xs); font-size: 0.875rem; }
+        .edit-loc { flex: 1; border: none !important; border-bottom: 1px solid var(--border) !important; border-radius: 0 !important; }
+        .edit-cat { background-color: var(--border); color: white; border: none; padding: 6px; border-radius: var(--radius-xs); font-size: 0.875rem; }
+        .edit-desc { background-color: var(--border); color: white; border: 1px solid var(--border-hover); padding: 8px; border-radius: var(--radius-xs); font-size: 0.875rem; width: 100%; resize: vertical; margin-top: 0.5rem; }
         .edit-actions { display: flex; gap: 1rem; margin-top: 1rem; }
-        .save-btn { flex: 1; background-color: var(--primary); color: white; border: none; padding: 0.6rem; border-radius: 6px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .delete-btn-action { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 0.6rem; border-radius: 6px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .save-btn { flex: 1; background-color: var(--primary); color: white; border: none; padding: 0.6rem; border-radius: var(--radius-sm); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .delete-btn-action { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .delete-btn-action:hover { background-color: var(--danger); color: white; }
-        .cancel-btn { background: none; border: 1px solid #334155; color: var(--text-muted); padding: 0.6rem; border-radius: 6px; font-size: 0.8rem; }
+        .cancel-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 0.6rem; border-radius: var(--radius-sm); font-size: 0.8rem; }
         
         /* Timetable Styles */
-        .view-mode-toggle { display: flex; background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 2px; }
-        .view-mode-btn { background: none; border: none; color: var(--text-muted); padding: 4px 12px; border-radius: 6px; display: flex; align-items: center; gap: 4px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
+        .view-mode-toggle { display: flex; background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-md); padding: 2px; }
+        .view-mode-btn { background: none; border: none; color: var(--text-muted); min-height: 32px; padding: 4px 12px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 4px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; }
         .view-mode-btn.active { background-color: var(--primary); color: white; }
         
-        .timetable-container { position: relative; margin-top: 1rem; border-top: 1px solid #334155; padding-top: 1rem; overflow-y: auto; max-height: 600px; background: rgba(0,0,0,0.1); border-radius: 8px; }
-        .timetable-all-day { margin: 0 1rem 1rem 1rem; border-bottom: 1px dashed #334155; padding-bottom: 0.5rem; }
-        .all-day-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block; font-weight: 700; }
+        .timetable-container { position: relative; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; overflow-y: auto; max-height: 600px; background: rgba(0,0,0,0.1); border-radius: var(--radius-md); }
+        .timetable-all-day { margin: 0 1rem 1rem 1rem; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; }
+        .all-day-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; display: block; font-weight: 700; }
         .all-day-items { display: flex; flex-direction: column; gap: 4px; }
         
-        .timetable-grid { position: relative; min-height: 1200px; margin-left: 55px; border-left: 1px solid #334155; margin-right: 1rem; }
+        .timetable-grid { position: relative; min-height: 1200px; margin-left: 55px; border-left: 1px solid var(--border); margin-right: 1rem; }
         .time-labels { position: absolute; left: -55px; top: 0; bottom: 0; width: 50px; }
-        .time-label { position: absolute; left: 0; width: 100%; font-size: 0.7rem; color: var(--text-muted); transform: translateY(-50%); text-align: right; padding-right: 8px; }
+        .time-label { position: absolute; left: 0; width: 100%; font-size: 0.75rem; color: var(--text-muted); transform: translateY(-50%); text-align: right; padding-right: 8px; }
         .time-grid-line { position: absolute; left: 0; right: 0; height: 1px; background-color: rgba(255, 255, 255, 0.05); }
         
-        .timetable-event { position: absolute; right: 4px; border-radius: 6px; padding: 6px 10px; font-size: 0.75rem; overflow: hidden; border-left: 4px solid transparent; backdrop-filter: blur(8px); transition: all 0.2s; z-index: 10; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .timetable-event { position: absolute; right: 4px; border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.75rem; overflow: hidden; border-left: 4px solid transparent; backdrop-filter: blur(8px); transition: all 0.2s; z-index: 10; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .timetable-event:hover { z-index: 20; transform: scale(1.02); box-shadow: 0 4px 15px rgba(0,0,0,0.4); border-left-width: 6px; }
         .timetable-event .title { font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-        .timetable-event .time { font-size: 0.65rem; opacity: 0.8; display: flex; align-items: center; gap: 4px; }
+        .timetable-event .time { font-size: 0.75rem; opacity: 0.8; display: flex; align-items: center; gap: 4px; }
         
         .timetable-event.union_member { background-color: rgba(239, 68, 68, 0.2); border-left-color: #ef4444; color: #fecaca; }
         .timetable-event.administrative { background-color: rgba(59, 130, 246, 0.2); border-left-color: #3b82f6; color: #dbeafe; }
         .timetable-event.committee { background-color: rgba(34, 197, 94, 0.2); border-left-color: #22c55e; color: #dcfce7; }
         .timetable-event.completed { opacity: 0.5; text-decoration: line-through; filter: grayscale(0.5); }
 
-        .event-item-mini, .task-item-mini { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; border-left: 3px solid transparent; background: rgba(255,255,255,0.05); }
+        .event-item-mini, .task-item-mini { padding: 4px 8px; border-radius: var(--radius-xs); font-size: 0.75rem; cursor: pointer; border-left: 3px solid transparent; background: rgba(255,255,255,0.05); }
         .event-item-mini.union_member { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
         .event-item-mini.administrative { border-left-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
         .event-item-mini.committee { border-left-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
@@ -882,13 +899,17 @@ const CalendarPage: React.FC = () => {
           .calendar-layout { grid-template-columns: 1fr; }
           .calendar-day { height: 80px; }
           .current-month-label { font-size: 1rem; min-width: 100px; }
-          .page-header h1 { font-size: 1.5rem; }
-          .detail-panel { padding: 1rem; position: static; }
+          .detail-panel { padding: 0; position: static; }
+          .schedule-tab-content, .travel-tab-content { padding: 1rem; }
+          /* 月送りと役職フィルタを横幅いっぱいに並べる */
+          .filter-area { flex: 1 1 100%; }
+          .month-nav { flex: 1 1 100%; width: auto; justify-content: space-between; }
+          .month-nav .current-month-label { flex: 1; }
         }
 
         @media (max-width: 480px) {
           .calendar-day { height: 60px; font-size: 0.75rem; }
-          .weekday-label { padding: 0.5rem; font-size: 0.7rem; }
+          .weekday-label { padding: 0.5rem; font-size: 0.75rem; }
           .day-number { font-size: 0.8rem; }
           .timetable-grid { margin-left: 45px; }
           .time-labels { left: -45px; width: 40px; }

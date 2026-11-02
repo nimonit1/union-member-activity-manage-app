@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { Task, ScheduleEvent, TravelExpenseItem } from '../types';
-import { AlertCircle, Calendar, CheckSquare, Clock, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Calendar, CheckSquare, Clock, TrendingDown, Wallet, Bell, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { buttonProps } from '../utils/a11y';
+import EmptyState from '../components/EmptyState';
 
 const Dashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -86,7 +88,7 @@ const Dashboard: React.FC = () => {
       </header>
 
       {urgentTasks.length > 0 && (
-        <div className="urgent-banner" onClick={() => navigate('/tasks')}>
+        <div className="urgent-banner" {...buttonProps(() => navigate('/tasks'))}>
           <div className="banner-icon">
             <Bell size={20} />
           </div>
@@ -110,7 +112,7 @@ const Dashboard: React.FC = () => {
           <div className="card-icon orange"><Calendar size={24} /></div>
           <div className="card-info">
             <span className="label">本日の予定</span>
-            <span className="value">{todayEvents.length} <small>件</small></span>
+            <span className="value">{todayEvents.length} <small className="inline">件</small></span>
           </div>
         </div>
         <div className="summary-card">
@@ -131,7 +133,7 @@ const Dashboard: React.FC = () => {
           {lowResponseTasks.length > 0 ? (
             <div className="alert-list">
               {lowResponseTasks.map(task => (
-                <div key={task.id} className="alert-item" onClick={() => navigate('/tasks')}>
+                <div key={task.id} className="alert-item" {...buttonProps(() => navigate('/tasks'))}>
                   <div className="alert-indicator"></div>
                   <div className="alert-body">
                     <span className="alert-title">{task.title}</span>
@@ -148,7 +150,7 @@ const Dashboard: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="empty-state">現在、フォローが必要な緊急タスクはありません。</div>
+            <EmptyState icon={<CheckCircle2 size={24} />} tone="success" title="フォローが必要なタスクはありません" description="回答率が低いタスクがあると、ここに表示されます。" />
           )}
         </section>
 
@@ -169,7 +171,7 @@ const Dashboard: React.FC = () => {
                 </div>
               ))
             ) : (
-              <div className="empty-state">本日の予定はありません。</div>
+              <EmptyState icon={<Calendar size={24} />} title="本日の予定はありません" />
             )}
             <button className="view-all-btn" onClick={() => navigate('/calendar')}>カレンダーを見る</button>
           </div>
@@ -181,12 +183,12 @@ const Dashboard: React.FC = () => {
           display: flex;
           flex-direction: column;
           gap: 2rem;
-          max-width: 1200px;
+          max-width: var(--content-max-width);
           margin: 0 auto;
         }
 
+        /* 見出しサイズは index.css の共通指定に任せる */
         .page-header h1 {
-          font-size: 2rem;
           margin-bottom: 0.25rem;
         }
 
@@ -203,18 +205,18 @@ const Dashboard: React.FC = () => {
         .summary-card {
           background-color: var(--bg-card);
           padding: 1.5rem;
-          border-radius: 12px;
+          border-radius: var(--radius-lg);
           display: flex;
           align-items: center;
           gap: 1.25rem;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-          border: 1px solid #334155;
+          border: 1px solid var(--border);
         }
 
         .card-icon {
           width: 48px;
           height: 48px;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -259,9 +261,9 @@ const Dashboard: React.FC = () => {
 
         section {
           background-color: var(--bg-card);
-          border-radius: 12px;
+          border-radius: var(--radius-lg);
           padding: 1.5rem;
-          border: 1px solid #334155;
+          border: 1px solid var(--border);
         }
 
         .page-header {
@@ -274,7 +276,7 @@ const Dashboard: React.FC = () => {
           padding: 0.5rem 1rem;
           background-color: rgba(59, 130, 246, 0.1);
           color: var(--primary);
-          border-radius: 20px;
+          border-radius: var(--radius-pill);
           font-size: 0.8rem;
           font-weight: 600;
         }
@@ -283,12 +285,11 @@ const Dashboard: React.FC = () => {
           background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
           color: white;
           padding: 1rem 1.25rem;
-          border-radius: 12px;
+          border-radius: var(--radius-lg);
           display: flex;
           align-items: center;
           gap: 1rem;
           cursor: pointer;
-          margin-bottom: 1.5rem;
           box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
           transition: transform 0.2s ease;
         }
@@ -301,7 +302,7 @@ const Dashboard: React.FC = () => {
           background: rgba(255, 255, 255, 0.2);
           width: 36px;
           height: 36px;
-          border-radius: 10px;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -329,7 +330,7 @@ const Dashboard: React.FC = () => {
           gap: 0.75rem;
           margin-bottom: 1.5rem;
           padding-bottom: 0.75rem;
-          border-bottom: 1px solid #334155;
+          border-bottom: 1px solid var(--border);
         }
 
         .section-header h2 {
@@ -347,7 +348,7 @@ const Dashboard: React.FC = () => {
           align-items: center;
           background-color: rgba(239, 68, 68, 0.05);
           border: 1px solid rgba(239, 68, 68, 0.2);
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           padding: 1rem;
           cursor: pointer;
           transition: transform 0.2s ease;
@@ -393,7 +394,7 @@ const Dashboard: React.FC = () => {
           color: white;
           border: none;
           padding: 0.5rem 1rem;
-          border-radius: 6px;
+          border-radius: var(--radius-sm);
           font-size: 0.875rem;
           font-weight: 600;
         }
@@ -408,7 +409,7 @@ const Dashboard: React.FC = () => {
           display: flex;
           gap: 1.25rem;
           padding: 0.75rem;
-          border-radius: 8px;
+          border-radius: var(--radius-md);
           background-color: rgba(255, 255, 255, 0.03);
         }
 
@@ -432,36 +433,55 @@ const Dashboard: React.FC = () => {
           color: var(--text-muted);
         }
 
-        .empty-state {
-          text-align: center;
-          padding: 2rem;
-          color: var(--text-muted);
-          font-style: italic;
-          font-size: 0.875rem;
-        }
-
         .view-all-btn {
           margin-top: 1rem;
           background: none;
-          border: 1px solid #334155;
+          border: 1px solid var(--border);
           color: var(--text-muted);
           padding: 0.5rem;
-          border-radius: 6px;
+          border-radius: var(--radius-sm);
           font-size: 0.875rem;
           transition: all 0.2s ease;
         }
 
         .view-all-btn:hover {
-          background-color: #334155;
+          background-color: var(--border);
           color: var(--text-main);
         }
 
         .text-danger { color: var(--danger); }
+        @media (max-width: 1024px) {
+          /* 1 列に積むときは、今日の予定を「要注意タスク」より先に見せる */
+          .schedule-section { order: -1; }
+        }
+
         @media (max-width: 640px) {
-          .summary-grid { grid-template-columns: 1fr; }
-          .urgent-grid { grid-template-columns: 1fr; }
-          .dashboard-header h1 { font-size: 1.5rem; }
-          .summary-card { padding: 1rem; }
+          .dashboard { gap: 1rem; }
+
+          /* 集計カードは 3 列の小さなタイルにして、縦の占有を約 1/3 にする */
+          .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+          .summary-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            min-width: 0;
+          }
+          .card-icon { width: 32px; height: 32px; border-radius: var(--radius-md); }
+          .card-icon svg { width: 18px; height: 18px; }
+          .card-info { min-width: 0; width: 100%; }
+          .card-info .label { font-size: 0.75rem; }
+          .card-info .value { font-size: 1.25rem; line-height: 1.3; white-space: nowrap; }
+          .card-info .value small:not(.inline) { display: block; font-size: 0.75rem; }
+
+          /* 緊急バナーは見出しだけにして高さを抑える */
+          .banner-desc { display: none; }
+          .urgent-banner { padding: 0.75rem 1rem; }
+
+          section { padding: 1rem; }
+          .section-header { margin-bottom: 1rem; }
+          .alert-item { flex-wrap: wrap; gap: 0.5rem; }
+          .alert-indicator { height: auto; align-self: stretch; }
         }
       `}</style>
     </div>
